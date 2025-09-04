@@ -1,0 +1,109 @@
+services:
+  ruta-ms:
+    image: public.ecr.aws/q2b4w2e6/dummies/ruta-ms:1.1.0
+    container_name: ruta-ms
+    environment:
+      - SERVICE_NAME=RUTA MS
+      - NORMATIVA_MS_URL=http://normativa-ms:3000
+      - VEHICULO_MS_URL=http://vehiculo-ms:3000
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/health || exit 1"]
+      interval: 5s
+      timeout: 2s
+      retries: 10
+    depends_on:
+      normativa-ms: { condition: service_healthy }
+      vehiculo-ms:  { condition: service_healthy }
+    ports: ["3001:3000"]
+    pull_policy: always
+
+  centro-distribucion-ms:
+    image: public.ecr.aws/q2b4w2e6/dummies/centro-distribucion-ms:1.1.0
+    container_name: centro-distribucion-ms
+    environment:
+      - SERVICE_NAME=CENTRO DE DISTRIBUCION MS
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/health || exit 1"]
+      interval: 5s
+      timeout: 2s
+      retries: 10
+    ports: ["3002:3000"]
+    pull_policy: always
+
+  lote-ms:
+    image: public.ecr.aws/q2b4w2e6/dummies/lote-ms:1.1.0
+    container_name: lote-ms
+    environment:
+      - SERVICE_NAME=LOTE MS
+      - NORMATIVA_MS_URL=http://normativa-ms:3000
+      - CENTRO_MS_URL=http://centro-distribucion-ms:3000
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/health || exit 1"]
+      interval: 5s
+      timeout: 2s
+      retries: 10
+    depends_on:
+      normativa-ms:           { condition: service_healthy }
+      centro-distribucion-ms: { condition: service_healthy }
+    ports: ["3003:3000"]
+    pull_policy: always
+
+  vehiculo-ms:
+    image: public.ecr.aws/q2b4w2e6/dummies/vehiculo-ms:1.1.0
+    container_name: vehiculo-ms
+    environment:
+      - SERVICE_NAME=VEHICULO MS
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/health || exit 1"]
+      interval: 5s
+      timeout: 2s
+      retries: 10
+    ports: ["3004:3000"]
+    pull_policy: always
+
+  normativa-ms:
+    image: public.ecr.aws/q2b4w2e6/dummies/normativa-ms:1.1.0
+    container_name: normativa-ms
+    environment:
+      - SERVICE_NAME=NORMATIVA MS
+      - ALERTA_MS_URL=http://alerta-ms:3000
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/health || exit 1"]
+      interval: 5s
+      timeout: 2s
+      retries: 10
+    depends_on:
+      alerta-ms: { condition: service_healthy }
+    ports: ["3005:3000"]
+    pull_policy: always
+
+  alerta-ms:
+    image: public.ecr.aws/q2b4w2e6/dummies/alerta-ms:1.1.0
+    container_name: alerta-ms
+    environment:
+      - SERVICE_NAME=ALERTA MS
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/health || exit 1"]
+      interval: 5s
+      timeout: 2s
+      retries: 10
+    ports: ["3006:3000"]
+    pull_policy: always
+
+  venta-ms:
+    image: public.ecr.aws/q2b4w2e6/dummies/venta-ms:1.1.0
+    container_name: venta-ms
+    environment:
+      - SERVICE_NAME=VENTA MS
+      - CENTRO_MS_URL=http://centro-distribucion-ms:3000
+      - RUTA_MS_URL=http://ruta-ms:3000
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/health || exit 1"]
+      interval: 5s
+      timeout: 2s
+      retries: 10
+    depends_on:
+      centro-distribucion-ms: { condition: service_healthy }
+      ruta-ms:                { condition: service_healthy }
+    ports: ["3007:3000"]
+    pull_policy: always
