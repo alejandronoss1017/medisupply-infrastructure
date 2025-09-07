@@ -2,6 +2,9 @@ const express = require('express');
 const morgan = require('morgan');
 const axios = require('axios');
 
+const { logEvent } = require('./ddb-logger');
+const DDB_TABLE = process.env.DDB_TABLE || 'sale-db';
+
 const app = express();
 const SERVICE_NAME = process.env.SERVICE_NAME || 'VENTA MS';
 const PORT = process.env.PORT || 3000;
@@ -38,6 +41,8 @@ app.all('/register-sale', async (req, res) => {
     const chain = [];
     chain.push(await callService(URLs.CENTRO_MS_URL, '/deduct-product-from-stock', req, { method:'post', data: payload }));
     chain.push(await callService(URLs.RUTA_MS_URL, '/plan-delivery-route', req, { method:'post', data: { saleId: 'S-001', sku } }));
+    const result = { chain };
+    await logEvent({ table: DDB_TABLE, service: SERVICE_NAME, endpoint: '/register-sale', req, result });
     res.json({ service:SERVICE_NAME, endpoint:'/register-sale', chain, time:new Date().toISOString() });
 });
 

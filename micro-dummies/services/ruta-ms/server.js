@@ -2,6 +2,9 @@ const express = require('express');
 const morgan = require('morgan');
 const axios = require('axios');
 
+const { logEvent } = require('./ddb-logger');
+const DDB_TABLE = process.env.DDB_TABLE || 'route-db';
+
 const app = express();
 const SERVICE_NAME = process.env.SERVICE_NAME || 'RUTA MS';
 const PORT = process.env.PORT || 3000;
@@ -36,7 +39,9 @@ app.all('/plan-delivery-route', async (req, res) => {
   const chain = [];
   chain.push(await callService(URLs.NORMATIVA_MS_URL, '/terms-of-delivery', req, { method:'get', params:{ routeId: 'R-001' } }));
   chain.push(await callService(URLs.VEHICULO_MS_URL, '/assign-vehicle', req, { method:'post', data:{ routeId:'R-001' } }));
-  res.json({ service:SERVICE_NAME, endpoint:'/plan-delivery-route', chain, time:new Date().toISOString() });
+  const payload = { chain };
+  await logEvent({ table: DDB_TABLE, service: SERVICE_NAME, endpoint: '/plan-delivery-route', req, result: payload });
+  res.json({ service: SERVICE_NAME, endpoint: '/plan-delivery-route', ...payload, time: new Date().toISOString() });
 });
 
 app.listen(PORT, () => console.log(`${SERVICE_NAME} listening on ${PORT}`));

@@ -2,6 +2,9 @@ const express = require('express');
 const morgan = require('morgan');
 const axios = require('axios');
 
+const { logEvent } = require('./ddb-logger');
+const DDB_TABLE = process.env.DDB_TABLE || 'distribution-center-db';
+
 const app = express();
 const SERVICE_NAME = process.env.SERVICE_NAME || 'LOTE MS';
 const PORT = process.env.PORT || 3000;
@@ -37,7 +40,9 @@ app.all('/register-lot', async (req, res) => {
     const chain = [];
     chain.push(await callService(URLs.NORMATIVA_MS_URL, '/validate-product-information', req, { method:'post', data:{ lot } }));
     chain.push(await callService(URLs.CENTRO_MS_URL, '/store-received-product', req, { method:'post', data:{ lot } }));
-    res.json({ service:SERVICE_NAME, endpoint:'/register-lot', chain, time:new Date().toISOString() });
+    const result = { lot: req.body?.lot || 'L-123', chain };
+    await logEvent({ table: DDB_TABLE, service: SERVICE_NAME, endpoint: '/register-lot', req, result });
+    res.json({ service: SERVICE_NAME, endpoint: '/register-lot', chain, time: new Date().toISOString() });
 });
 
 app.listen(PORT, () => console.log(`${SERVICE_NAME} listening on ${PORT}`));

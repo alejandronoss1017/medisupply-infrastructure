@@ -2,6 +2,9 @@ const express = require('express');
 const morgan = require('morgan');
 const axios = require('axios');
 
+const { logEvent } = require('./ddb-logger');
+const DDB_TABLE = process.env.DDB_TABLE || 'regulation-db';
+
 const app = express();
 const SERVICE_NAME = process.env.SERVICE_NAME || 'NORMATIVA MS';
 const PORT = process.env.PORT || 3000;
@@ -31,19 +34,25 @@ app.use(morgan('dev'));
 app.get('/health', (_, res) => res.json({ status:'ok', service:SERVICE_NAME, time:new Date().toISOString() }));
 
 // Usado por RUTA
-app.all('/terms-of-delivery', (req, res) => {
-    res.json({ service:SERVICE_NAME, endpoint:'/terms-of-delivery', terms:['CONDICION_A','CONDICION_B'], time:new Date().toISOString() });
+app.all('/terms-of-delivery', async (req, res) => {
+    const result = { terms:['CONDICION_A','CONDICION_B'] };
+    await logEvent({ table: DDB_TABLE, service: SERVICE_NAME, endpoint: '/terms-of-delivery', req, result });
+    res.json({ service:SERVICE_NAME, endpoint:'/terms-of-delivery', ...result, time:new Date().toISOString() });
 });
 
 // Usado por LOTE
-app.all('/validate-product-information', (req, res) => {
-    res.json({ service:SERVICE_NAME, endpoint:'/validate-product-information', valid:true, payload:req.body||{}, time:new Date().toISOString() });
+app.all('/validate-product-information', async (req, res) => {
+    const result = { valid:true, payload:req.body||{} };
+    await logEvent({ table: DDB_TABLE, service: SERVICE_NAME, endpoint: '/validate-product-information', req, result });
+    res.json({ service:SERVICE_NAME, endpoint:'/validate-product-information', ...result, time:new Date().toISOString() });
 });
 
 // THIRD FLOW: NORMATIVA -> ALERTA
 app.all('/track-cold-chain-traceability', async (req, res) => {
     const chain = [];
     chain.push(await callService(URLs.ALERTA_MS_URL, '/generate-alert', req, { method:'post', data:{ type:'COLD_CHAIN', sku:req.body?.sku || 'SKU-1' } }));
+    const result = { chain, sku: req.body?.sku || 'SKU-1' };
+    await logEvent({ table: DDB_TABLE, service: SERVICE_NAME, endpoint: '/track-cold-chain-traceability', req, result });
     res.json({ service:SERVICE_NAME, endpoint:'/track-cold-chain-traceability', chain, time:new Date().toISOString() });
 });
 

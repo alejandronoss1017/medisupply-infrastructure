@@ -6,6 +6,11 @@ services:
       - SERVICE_NAME=RUTA MS
       - NORMATIVA_MS_URL=http://normativa-ms:3000
       - VEHICULO_MS_URL=http://vehiculo-ms:3000
+      # --- Optional: DynamoDB logging (only if your image tag includes it) ---
+      # - AWS_REGION=us-east-1
+      # - AWS_ACCESS_KEY_ID=YOUR_KEY
+      # - AWS_SECRET_ACCESS_KEY=YOUR_SECRET
+      # - DDB_TABLE=route-db
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:3000/health || exit 1"]
       interval: 5s
@@ -22,6 +27,11 @@ services:
     container_name: centro-distribucion-ms
     environment:
       - SERVICE_NAME=CENTRO DE DISTRIBUCION MS
+      # --- Optional DDB ---
+      # - AWS_REGION=us-east-1
+      # - AWS_ACCESS_KEY_ID=YOUR_KEY
+      # - AWS_SECRET_ACCESS_KEY=YOUR_SECRET
+      # - DDB_TABLE=distribution-center-db
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:3000/health || exit 1"]
       interval: 5s
@@ -37,6 +47,11 @@ services:
       - SERVICE_NAME=LOTE MS
       - NORMATIVA_MS_URL=http://normativa-ms:3000
       - CENTRO_MS_URL=http://centro-distribucion-ms:3000
+      # --- Optional DDB ---
+      # - AWS_REGION=us-east-1
+      # - AWS_ACCESS_KEY_ID=YOUR_KEY
+      # - AWS_SECRET_ACCESS_KEY=YOUR_SECRET
+      # - DDB_TABLE=distribution-center-db
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:3000/health || exit 1"]
       interval: 5s
@@ -53,6 +68,11 @@ services:
     container_name: vehiculo-ms
     environment:
       - SERVICE_NAME=VEHICULO MS
+      # --- Optional DDB ---
+      # - AWS_REGION=us-east-1
+      # - AWS_ACCESS_KEY_ID=YOUR_KEY
+      # - AWS_SECRET_ACCESS_KEY=YOUR_SECRET
+      # - DDB_TABLE=vehicle-db
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:3000/health || exit 1"]
       interval: 5s
@@ -67,6 +87,11 @@ services:
     environment:
       - SERVICE_NAME=NORMATIVA MS
       - ALERTA_MS_URL=http://alerta-ms:3000
+      # --- Optional DDB ---
+      # - AWS_REGION=us-east-1
+      # - AWS_ACCESS_KEY_ID=YOUR_KEY
+      # - AWS_SECRET_ACCESS_KEY=YOUR_SECRET
+      # - DDB_TABLE=regulation-db
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:3000/health || exit 1"]
       interval: 5s
@@ -82,6 +107,11 @@ services:
     container_name: alerta-ms
     environment:
       - SERVICE_NAME=ALERTA MS
+      # --- Optional DDB ---
+      # - AWS_REGION=us-east-1
+      # - AWS_ACCESS_KEY_ID=YOUR_KEY
+      # - AWS_SECRET_ACCESS_KEY=YOUR_SECRET
+      # - DDB_TABLE=alert-db
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:3000/health || exit 1"]
       interval: 5s
@@ -97,6 +127,11 @@ services:
       - SERVICE_NAME=VENTA MS
       - CENTRO_MS_URL=http://centro-distribucion-ms:3000
       - RUTA_MS_URL=http://ruta-ms:3000
+      # --- Optional DDB ---
+      # - AWS_REGION=us-east-1
+      # - AWS_ACCESS_KEY_ID=YOUR_KEY
+      # - AWS_SECRET_ACCESS_KEY=YOUR_SECRET
+      # - DDB_TABLE=sale-db
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:3000/health || exit 1"]
       interval: 5s
@@ -107,3 +142,28 @@ services:
       ruta-ms:                { condition: service_healthy }
     ports: ["3007:3000"]
     pull_policy: always
+
+  # Optional: a simple tester that exercises the 3 flows inside the Compose network.
+  tester:
+    image: curlimages/curl:latest
+    container_name: ms-tester
+    depends_on:
+      venta-ms:                 { condition: service_healthy }
+      lote-ms:                  { condition: service_healthy }
+      normativa-ms:             { condition: service_healthy }
+    command: >
+      sh -lc '
+        echo "== Health checks ==" &&
+        curl -sf http://venta-ms:3000/health &&
+        curl -sf http://lote-ms:3000/health &&
+        curl -sf http://normativa-ms:3000/health &&
+        echo &&
+        echo "== FIRST FLOW: /register-sale ==" &&
+        curl -s -X POST http://venta-ms:3000/register-sale -H "Content-Type: application/json" -d "{\"sku\":\"SKU-1\",\"amount\":1}" && echo &&
+        echo "== SECOND FLOW: /register-lot ==" &&
+        curl -s -X POST http://lote-ms:3000/register-lot -H "Content-Type: application/json" -d "{\"lot\":\"L-123\"}" && echo &&
+        echo "== THIRD FLOW: /track-cold-chain-traceability ==" &&
+        curl -s -X POST http://normativa-ms:3000/track-cold-chain-traceability -H "Content-Type: application/json" -d "{\"sku\":\"SKU-1\"}" && echo &&
+        sleep 3600
+      '
+    profiles: ["test"]
