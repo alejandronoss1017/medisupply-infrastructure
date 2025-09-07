@@ -3,7 +3,7 @@ set -euo pipefail
 
 # === CONFIG ===
 ALIAS="q2b4w2e6"             # your ECR Public registry alias
-VERSION="${VERSION:-1.3.0}"  # tag to publish
+VERSION="${VERSION:-1.3.1}"  # tag to publish
 REPO_PREFIX="dummies"        # repository prefix
 REGION="us-east-1"           # ECR Public auth region (always us-east-1)
 USE_BUILDX="${USE_BUILDX:-false}"     # true -> multi-arch build & push
