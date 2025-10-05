@@ -1,0 +1,34 @@
+# Ignore Git-related files
+.git
+.gitignore
+
+# Ignore Go build artifacts and cache
+*.o
+*.a
+*.so
+*.exe
+vendor/
+pkg/
+bin/
+.cache/
+
+# Ignore editor/IDE specific files
+.vscode/
+.idea/
+*.swp
+*.bak
+*~
+
+# Ignore temporary files and logs
+tmp/
+log/
+*.log
+
+# Ignore test files and related directories if not needed in the final image
+*_test.go
+testdata/
+
+# Ignore Docker-related files that are not part of the build context
+Dockerfile
+docker-compose.yml
+.dockerignore
