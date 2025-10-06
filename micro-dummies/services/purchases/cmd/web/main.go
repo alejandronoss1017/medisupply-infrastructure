@@ -35,11 +35,11 @@ func main() {
 	router.GET("/ping", http.PongHandler)
 
 	// Purchase routes
-	router.GET("/purchases", handler.GetPurchases)
-	router.GET("/purchases/:id", handler.GetPurchase)
-	router.POST("/purchases", handler.PostPurchase)
-	router.PUT("/purchases/:id", handler.PutPurchase)
-	router.DELETE("/purchases/:id", handler.DeletePurchase)
+	router.GET("/", handler.GetPurchases)
+	router.GET("/:id", handler.GetPurchase)
+	router.POST("/", handler.PostPurchase)
+	router.PUT("/:id", handler.PutPurchase)
+	router.DELETE("/:id", handler.DeletePurchase)
 
 	err = router.Run()
 	if err != nil {
