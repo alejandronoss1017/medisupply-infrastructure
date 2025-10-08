@@ -14,6 +14,7 @@ func main() {
 	rabbitUser := os.Getenv("RABBITMQ_USER")
 	rabbitPassword := os.Getenv("RABBITMQ_PASSWORD")
 	rabbitHost := os.Getenv("RABBITMQ_HOST")
+	rabbitQueue := os.Getenv("RABBITMQ_QUEUE")
 
 	// Initialize RabbitMQ adapter
 	rabbitMQ, err := queue.NewRabbitMQ(rabbitUser, rabbitPassword, rabbitHost)
@@ -25,7 +26,7 @@ func main() {
 	log.Println("Starting Purchase Events Consumer...")
 
 	// Start consuming messages
-	if err := rabbitMQ.Consume("purchases_queue", rabbitMQ.HandleEvent); err != nil {
+	if err := rabbitMQ.Consume(rabbitQueue, rabbitMQ.HandleEvent); err != nil {
 		log.Fatalf("Failed to start consumer: %v", err)
 	}
 

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"strings"
 	"time"
 
 	"github.com/medisupply/medisupply-infrastructure/micro-dummies/services/purchases/internal/core/domain"
@@ -19,9 +20,18 @@ type RabbitMQ struct {
 
 // NewRabbitMQ creates a new RabbitMQ adapter
 func NewRabbitMQ(user, password, host string) (*RabbitMQ, error) {
-	if user == "" || password == "" || host == "" {
-		return nil, fmt.Errorf("user, password and host can not be empty")
+	if strings.TrimSpace(user) == "" {
+		return nil, fmt.Errorf("user cannot be empty or whitespace")
 	}
+
+	if strings.TrimSpace(password) == "" {
+		return nil, fmt.Errorf("password cannot be empty or whitespace")
+	}
+
+	if strings.TrimSpace(host) == "" {
+		return nil, fmt.Errorf("host cannot be empty or whitespace")
+	}
+
 	url := fmt.Sprintf("amqp://%s:%s@%s:5672/", user, password, host)
 
 	conn, err := amqp.Dial(url)
@@ -39,42 +49,6 @@ func NewRabbitMQ(user, password, host string) (*RabbitMQ, error) {
 		conn:    conn,
 		channel: channel,
 	}, nil
-}
-
-// DeclareExchange declares an exchange on RabbitMQ
-func (r *RabbitMQ) DeclareExchange(name, kind string) error {
-	return r.channel.ExchangeDeclare(
-		name,  // name
-		kind,  // type (direct, fanout, topic, headers)
-		true,  // durable
-		false, // auto-deleted
-		false, // internal
-		false, // no-wait
-		nil,   // arguments
-	)
-}
-
-// DeclareQueue declares a queue on RabbitMQ
-func (r *RabbitMQ) DeclareQueue(name string) (amqp.Queue, error) {
-	return r.channel.QueueDeclare(
-		name,  // name
-		true,  // durable
-		false, // delete when unused
-		false, // exclusive
-		false, // no-wait
-		nil,   // arguments
-	)
-}
-
-// BindQueue binds a queue to an exchange with a routing key
-func (r *RabbitMQ) BindQueue(queueName, routingKey, exchangeName string) error {
-	return r.channel.QueueBind(
-		queueName,    // queue name
-		routingKey,   // routing key
-		exchangeName, // exchange
-		false,
-		nil,
-	)
 }
 
 // Publish publishes a message to an exchange with a routing key

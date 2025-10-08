@@ -58,6 +58,7 @@ This starts RabbitMQ with:
 export RABBITMQ_USER=guest
 export RABBITMQ_PASSWORD=guest
 export RABBITMQ_HOST=localhost:5672
+export RABBITMQ_EXCHANGE=purchases.exchange
 
 go run cmd/web/main.go
 ```
@@ -72,6 +73,7 @@ In a separate terminal:
 export RABBITMQ_USER=guest
 export RABBITMQ_PASSWORD=guest
 export RABBITMQ_HOST=localhost:5672
+export RABBITMQ_QUEUE=purchases.events
 
 go run cmd/worker/main.go
 ```
@@ -119,6 +121,8 @@ This service automatically publishes events to RabbitMQ for all purchase operati
 - `RABBITMQ_USER` - RabbitMQ username (default: `guest`)
 - `RABBITMQ_PASSWORD` - RabbitMQ password (default: `guest`)
 - `RABBITMQ_HOST` - RabbitMQ host and port (default: `localhost:5672`)
+- `RABBITMQ_EXCHANGE` - RabbitMQ exchange name (default: `purchases.exchange`)
+- `RABBITMQ_QUEUE` - RabbitMQ queue name (default: `purchases.events`)
 
 ### Running Without RabbitMQ
 

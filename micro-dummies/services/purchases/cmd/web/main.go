@@ -16,6 +16,7 @@ func main() {
 	rabbitUser := os.Getenv("RABBITMQ_USER")
 	rabbitPassword := os.Getenv("RABBITMQ_PASSWORD")
 	rabbitHost := os.Getenv("RABBITMQ_HOST")
+	rabbitExchange := os.Getenv("RABBITMQ_EXCHANGE")
 
 	// Initialize RabbitMQ adapter
 	rabbitMQ, err := queue.NewRabbitMQ(rabbitUser, rabbitPassword, rabbitHost)
@@ -25,7 +26,7 @@ func main() {
 	defer rabbitMQ.Close()
 
 	// Initialize dependencies
-	service := application.NewPurchaseService(rabbitMQ)
+	service := application.NewPurchaseService(rabbitMQ, rabbitExchange)
 	handler := http.NewPurchaseHandler(service)
 
 	// Setup router

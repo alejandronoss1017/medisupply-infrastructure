@@ -56,11 +56,13 @@ var data = []domain.Purchase{
 
 type PurchaseService struct {
 	messagePublisher driven.Publisher
+	exchange         string
 }
 
-func NewPurchaseService(messagePublisher driven.Publisher) *PurchaseService {
+func NewPurchaseService(messagePublisher driven.Publisher, exchange string) *PurchaseService {
 	return &PurchaseService{
 		messagePublisher: messagePublisher,
+		exchange:         exchange,
 	}
 }
 
@@ -98,7 +100,7 @@ func (s *PurchaseService) CreatePurchase(price float64, quantity int) (*domain.P
 	data = append(data, *purchase)
 
 	// Publish event
-	s.publishEvent(domain.NewPurchaseCreatedEvent(*purchase), "purchases")
+	s.publishEvent(domain.NewPurchaseCreatedEvent(*purchase), s.exchange)
 
 	return purchase, nil
 }
@@ -137,7 +139,7 @@ func (s *PurchaseService) UpdatePurchase(id string, price float64, quantity int)
 	}
 
 	// Publish event
-	s.publishEvent(domain.NewPurchaseUpdatedEvent(*purchase), "purchases")
+	s.publishEvent(domain.NewPurchaseUpdatedEvent(*purchase), s.exchange)
 
 	return purchase, nil
 }
@@ -164,7 +166,7 @@ func (s *PurchaseService) DeletePurchase(id string) error {
 		if purchase.ID == id {
 			data = append(data[:i], data[i+1:]...)
 			// Publish event
-			s.publishEvent(domain.NewPurchaseDeletedEvent(purchase), "purchases")
+			s.publishEvent(domain.NewPurchaseDeletedEvent(purchase), s.exchange)
 			break
 		}
 	}
