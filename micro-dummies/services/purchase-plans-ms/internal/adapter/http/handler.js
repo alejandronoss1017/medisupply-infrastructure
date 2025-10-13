@@ -9,15 +9,6 @@ class PurchasePlanHandler {
     }
 
     setupRoutes() {
-        // Health check endpoint
-        this.router.get('/health', (_, res) => {
-            res.json({ 
-                status: 'ok', 
-                service: process.env.SERVICE_NAME || 'PURCHASE-PLANS-MS', 
-                time: new Date().toISOString() 
-            });
-        });
-        
         this.router.post('/purchase-plans', this.createPurchasePlan.bind(this));
         this.router.get('/purchase-plans/:id', this.getPurchasePlan.bind(this));
         this.router.put('/purchase-plans/:id', this.updatePurchasePlan.bind(this));

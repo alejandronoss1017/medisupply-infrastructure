@@ -34,6 +34,15 @@ async function main() {
         app.use(express.json());
         app.use(morgan('dev'));
 
+        // Health check endpoint
+        this.router.get('/health', (_, res) => {
+            res.json({
+                status: 'ok',
+                service: process.env.SERVICE_NAME || 'PURCHASE-PLANS-MS',
+                time: new Date().toISOString()
+            });
+        });
+
         // Register purchase plan routes
         app.use('/', purchasePlanHandler.getRouter());
 
