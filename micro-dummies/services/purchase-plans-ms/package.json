@@ -1,0 +1,25 @@
+{
+  "name": "purchase-plans-ms",
+  "version": "1.0.0",
+  "description": "Purchase Plans microservice with hexagonal architecture",
+  "main": "cmd/worker/main.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node cmd/worker/main.js"
+  },
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.883.0",
+    "@aws-sdk/lib-dynamodb": "^3.883.0",
+    "uuid": "^12.0.0",
+    "kafkajs": "^2.2.4"
+  },
+  "keywords": [
+    "microservice",
+    "hexagonal",
+    "kafka",
+    "dynamodb",
+    "purchase-plans"
+  ],
+  "author": "",
+  "license": "MIT"
+}
