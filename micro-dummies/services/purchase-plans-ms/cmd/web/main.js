@@ -2,7 +2,7 @@
 const express = require('express');
 const morgan = require('morgan');
 const { PurchasePlanServiceImpl } = require('../../internal/core/application/service');
-const { DynamoDBRepository } = require('../../internal/adapter/dynamodb/repository');
+const { DynamoDBPurchasePlanRepository } = require('../../internal/adapter/dynamodb/repository');
 const { PurchasePlanHandler } = require('../../internal/adapter/http/handler');
 
 const SERVICE_NAME = process.env.SERVICE_NAME || 'PURCHASE-PLANS-MS';
@@ -21,7 +21,7 @@ async function main() {
             region: AWS_REGION,
             tableName: DYNAMODB_TABLE
         };
-        const repository = new DynamoDBRepository(repositoryConfig);
+        const repository = new DynamoDBPurchasePlanRepository(repositoryConfig);
 
         // Initialize service
         const purchasePlanService = new PurchasePlanServiceImpl(repository);
