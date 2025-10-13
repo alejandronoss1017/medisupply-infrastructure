@@ -40,7 +40,7 @@ async function main() {
         app.use('/', supplierHandler.getRouter());
 
         // Register medicines routes
-        app.use('/api', medicineHandler.getRouter());
+        app.use('/', medicineHandler.getRouter());
 
         // Start server
         const server = app.listen(PORT, () => {
