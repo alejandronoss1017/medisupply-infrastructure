@@ -35,7 +35,7 @@ async function main() {
         app.use(morgan('dev'));
 
         // Health check endpoint
-        app.get('/health', (_, res) => {
+        app.get('/purchase-plans/health', (_, res) => {
             res.json({ 
                 status: 'ok', 
                 service: SERVICE_NAME, 
@@ -44,7 +44,7 @@ async function main() {
         });
 
         // Register purchase plan routes
-        app.use('/api', purchasePlanHandler.getRouter());
+        app.use('/', purchasePlanHandler.getRouter());
 
         // Start server
         const server = app.listen(PORT, () => {

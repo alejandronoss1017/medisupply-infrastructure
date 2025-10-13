@@ -35,7 +35,7 @@ async function main() {
         app.use(morgan('dev'));
 
         // Health check endpoint
-        app.get('/health', (_, res) => {
+        app.get('/suppliers/health', (_, res) => {
             res.json({ 
                 status: 'ok', 
                 service: SERVICE_NAME, 
@@ -44,7 +44,7 @@ async function main() {
         });
 
         // Register supplier routes
-        app.use('/api', supplierHandler.getRouter());
+        app.use('/', supplierHandler.getRouter());
 
         // Start server
         const server = app.listen(PORT, () => {
