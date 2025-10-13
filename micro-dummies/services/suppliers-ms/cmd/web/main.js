@@ -37,10 +37,10 @@ async function main() {
         app.use(morgan('dev'));
 
         // Register supplier routes
-        app.use('/', supplierHandler.getRouter());
+        app.use('/suppliers', supplierHandler.getRouter());
 
         // Register medicines routes
-        app.use('/', medicineHandler.getRouter());
+        app.use('/medicines', medicineHandler.getRouter());
 
         // Start server
         const server = app.listen(PORT, () => {

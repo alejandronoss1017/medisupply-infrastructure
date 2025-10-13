@@ -18,9 +18,9 @@ class SupplierHandler {
             });
         });
         
-        this.router.post('/suppliers', this.createSupplier.bind(this));
-        this.router.put('/suppliers/:id', this.updateSupplier.bind(this));
-        this.router.post('/suppliers/process', this.processRequest.bind(this));
+        this.router.post('/', this.createSupplier.bind(this));
+        this.router.put('/:id', this.updateSupplier.bind(this));
+        this.router.post('/process', this.processRequest.bind(this));
     }
 
     async createSupplier(req, res) {
@@ -92,8 +92,8 @@ class MedicineHandler {
 
 
     setupRoutes() {
-        this.router.post('/medicines', this.createMedicine.bind(this));
-        this.router.put('/medicines/:id', this.updateMedicine.bind(this));
+        this.router.post('/', this.createMedicine.bind(this));
+        this.router.put('/:id', this.updateMedicine.bind(this));
     }
 
     async createMedicine(req, res){
