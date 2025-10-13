@@ -43,11 +43,76 @@ async function handleMessage(topic, event) {
     try {
         console.log(`Processing message from topic ${topic}:`, event.eventType);
         const result = await purchasePlanService.processPurchasePlanEvent(event);
+        // add event to event mesh
+        await addEventToEventMesh(event);
         if (result?.success) console.log('Purchase plan created successfully from event');
         else console.error('Failed to create purchase plan from event:', result?.error);
     } catch (error) {
         console.error('Error handling message:', error);
     }
+}
+
+async function addEventToEventMesh(event) {
+    const http = require('http');
+        //TODO: MOVE THIS TO WEB SERVICE
+        // Adapt event into CloudEvent envelope
+        // Example curl (for context):
+        // curl -v "http://broker-ingress.knative-eventing.svc.cluster.local/order-system/order-broker" \
+        //   -X POST \
+        //   -H "Ce-Id: 12345" \
+        //   -H "Ce-Specversion: 1.0" \
+        //   -H "Ce-Type: order.created" \
+        //   -H "Ce-Source: order-system/order-api" \
+        //   -H "Content-Type: application/json" \
+        //   -d '{ ... }'
+
+        // Build CloudEvent headers and event body
+        // You may want to customize these for your event type/domain
+        const brokerHost = process.env.EVENTMESH_BROKER_HOST || 'broker-ingress.knative-eventing.svc.cluster.local';
+        const brokerNamespace = process.env.EVENTMESH_BROKER_NAMESPACE || 'medisupply-broker';
+        const brokerName = process.env.EVENTMESH_BROKER_NAME || 'medisupply-system';
+        const ceType = event.eventType || 'updated.med';
+        const ceId = event.id || String(Date.now());
+        const ceSource = process.env.EVENTMESH_CE_SOURCE || 'purchase-plans-ms/worker';
+
+        const bodyStr = JSON.stringify(event);
+        const options = {
+            hostname: brokerHost,
+            port: 80,
+            path: `/${brokerNamespace}/${brokerName}`,
+            method: 'POST',
+            headers: {
+                'Ce-Id': ceId,
+                'Ce-Specversion': '1.0',
+                'Ce-Type': ceType,
+                'Ce-Source': ceSource,
+                'Content-Type': 'application/json',
+                'Content-Length': Buffer.byteLength(bodyStr)
+            }
+        };
+
+        await new Promise((resolve, reject) => {
+            const req = http.request(options, (res) => {
+                let data = '';
+                res.on('data', chunk => data += chunk);
+                res.on('end', () => {
+                    if (res.statusCode >= 200 && res.statusCode < 300) {
+                        console.log('Event pushed to event mesh:', res.statusCode);
+                        resolve();
+                    } else {
+                        console.error('Event mesh responded with:', res.statusCode, data);
+                        reject(new Error(`Event mesh HTTP error: ${res.statusCode}`));
+                    }
+                });
+            });
+            req.on('error', (err) => {
+                console.error('Failed to push to event mesh:', err);
+                reject(err);
+            });
+            req.write(bodyStr);
+        req.end();
+    });
+    console.log('Adding event to event mesh:', event);
 }
 
 async function main() {
