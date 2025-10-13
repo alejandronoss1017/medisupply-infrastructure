@@ -1,9 +1,9 @@
 // Main entry point for web server
 const express = require('express');
 const morgan = require('morgan');
-const { SupplierServiceImpl } = require('../../internal/core/application/service');
+const { SupplierServiceImpl, MedicineServiceImpl } = require('../../internal/core/application/service');
 const { KafkaProducer } = require('../../internal/adapter/kafka/producer');
-const { SupplierHandler } = require('../../internal/adapter/http/handler');
+const { SupplierHandler, MedicineHandler } = require('../../internal/adapter/http/handler');
 
 const SERVICE_NAME = process.env.SERVICE_NAME || 'SUPPLIERS-MS';
 const PORT = process.env.PORT || 3001;
@@ -25,9 +25,11 @@ async function main() {
 
         // Initialize service
         const supplierService = new SupplierServiceImpl(kafkaProducer);
+        const medicineService = new MedicineServiceImpl(kafkaProducer);
 
         // Initialize HTTP handler
         const supplierHandler = new SupplierHandler(supplierService);
+        const medicineHandler = new  MedicineHandler(medicineService)
 
         // Setup Express app
         const app = express();
@@ -36,6 +38,9 @@ async function main() {
 
         // Register supplier routes
         app.use('/', supplierHandler.getRouter());
+
+        // Register medicines routes
+        app.use('/api', medicineHandler.getRouter());
 
         // Start server
         const server = app.listen(PORT, () => {

@@ -83,4 +83,58 @@ class SupplierHandler {
     }
 }
 
-module.exports = { SupplierHandler };
+class MedicineHandler {
+    constructor(medicineService) {
+        this.medicineService = medicineService;
+        this.router = express.Router();
+        this.setupRoutes();
+    }
+
+
+    setupRoutes() {
+        this.router.post('/medicines', this.createMedicine.bind(this));
+        this.router.put('/medicines/:id', this.updateMedicine.bind(this));
+    }
+
+    async createMedicine(req, res){
+        try {
+            const result = await this.medicineService.createMedicine(req.body);
+            res.status(200).json({
+                success: true,
+                data: result,
+                timestamp: new Date().toISOString()
+            });
+        } catch (error) {
+            console.error('Error in createMedicine:', error);
+            res.status(400).json({
+                success: false,
+                error: error.message,
+                timestamp: new Date().toISOString()
+            });
+        }
+    }
+
+    async updateMedicine(req, res){
+        try {
+            const result = await this.medicineService.updateMedicine(req.body);
+            res.status(200).json({
+                success: true,
+                data: result,
+                timestamp: new Date().toISOString()
+            });
+        } catch (error) {
+            console.error('Error in updateMedicine:', error);
+            res.status(400).json({
+                success: false,
+                error: error.message,
+                timestamp: new Date().toISOString()
+            });
+        }
+    }
+
+    getRouter() {
+        return this.router;
+    }
+}
+
+module.exports = { SupplierHandler, MedicineHandler };
