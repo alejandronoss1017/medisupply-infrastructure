@@ -9,6 +9,15 @@ class SupplierHandler {
     }
 
     setupRoutes() {
+        // Health check endpoint
+        this.router.get('/health', (_, res) => {
+            res.json({ 
+                status: 'ok', 
+                service: process.env.SERVICE_NAME || 'SUPPLIERS-MS', 
+                time: new Date().toISOString() 
+            });
+        });
+        
         this.router.post('/suppliers', this.createSupplier.bind(this));
         this.router.put('/suppliers/:id', this.updateSupplier.bind(this));
         this.router.post('/suppliers/process', this.processRequest.bind(this));
