@@ -36,6 +36,15 @@ async function main() {
         app.use(express.json());
         app.use(morgan('dev'));
 
+        // Health check endpoint
+        app.get('/health', (_, res) => {
+            res.json({
+                status: 'ok',
+                service: process.env.SERVICE_NAME || 'SUPPLIERS-MS',
+                time: new Date().toISOString()
+            });
+        });
+
         // Register supplier routes
         app.use('/suppliers', supplierHandler.getRouter());
 
