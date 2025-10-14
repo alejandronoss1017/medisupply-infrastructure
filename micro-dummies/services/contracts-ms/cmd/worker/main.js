@@ -7,7 +7,7 @@ const KAFKA_BROKERS = (process.env.KAFKA_BROKERS || 'localhost:9092').split(',')
 const KAFKA_CLIENT_ID = process.env.KAFKA_CLIENT_ID || 'contracts-ms-worker';
 const KAFKA_GROUP_ID = process.env.KAFKA_GROUP_ID || 'contracts-worker-group';
 const KAFKA_TOPICS = (process.env.KAFKA_TOPICS || 'supplier-events').split(',').map(t => t.trim()).filter(Boolean);
-
+const EVENT_MESH_URL = process.env.EVENT_MESH_URL || "http://broker-ingress.knative-eventing.svc.cluster.local/medisupply-eventing/medisupply-broker";
 
 const KAFKA_DEFAULT_PARTITIONS = parseInt(process.env.KAFKA_DEFAULT_PARTITIONS || '1', 10);
 const KAFKA_DEFAULT_REPLICATION_FACTOR = parseInt(process.env.KAFKA_DEFAULT_REPLICATION_FACTOR || '1', 10);
@@ -34,7 +34,7 @@ async function ensureTopicsExist(brokers, topics, { numPartitions = 1, replicati
 
 async function sendCloudEvent(eventData, eventType, eventId = crypto.randomUUID()) {
     const response = await fetch(
-        "http://broker-ingress.knative-eventing.svc.cluster.local/order-system/order-broker",
+        EVENT_MESH_URL,
         {
             method: "POST",
             headers: {
