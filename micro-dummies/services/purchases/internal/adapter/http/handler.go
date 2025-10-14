@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 
@@ -137,7 +138,10 @@ func (h *PurchaseHandler) HandleCloudEvent(c *gin.Context) {
 	//TODO: TEST THIS
 	// Parse the CloudEvent from the HTTP request
 	var cloudEvent event.Event
-	if err := cloudEvent.UnmarshalJSON(c.Request.Body); err != nil {
+
+	bodyBytes, _ := io.ReadAll(c.Request.Body)
+
+	if err := cloudEvent.UnmarshalJSON(bodyBytes); err != nil {
 		log.Printf("Failed to unmarshal CloudEvent: %v", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid CloudEvent format"})
 		return
@@ -151,7 +155,7 @@ func (h *PurchaseHandler) HandleCloudEvent(c *gin.Context) {
 	log.Printf("Event Subject: %s", cloudEvent.Subject())
 	log.Printf("Event Time: %s", cloudEvent.Time())
 	log.Printf("Event Data Content Type: %s", cloudEvent.DataContentType())
-	
+
 	// Log the event data
 	if cloudEvent.Data() != nil {
 		dataBytes, err := json.MarshalIndent(cloudEvent.Data(), "", "  ")
@@ -209,9 +213,9 @@ func (h *PurchaseHandler) HandleCloudEvent(c *gin.Context) {
 
 	// Respond with success
 	c.JSON(http.StatusOK, gin.H{
-		"message":    "CloudEvent received, logged, and published to RabbitMQ successfully",
-		"eventId":    cloudEvent.ID(),
-		"eventType":  cloudEvent.Type(),
-		"published":  h.publisher != nil,
+		"message":   "CloudEvent received, logged, and published to RabbitMQ successfully",
+		"eventId":   cloudEvent.ID(),
+		"eventType": cloudEvent.Type(),
+		"published": h.publisher != nil,
 	})
 }
