@@ -27,7 +27,7 @@ func main() {
 
 	// Initialize dependencies
 	service := application.NewPurchaseService(rabbitMQ, rabbitExchange)
-	handler := http.NewPurchaseHandler(service)
+	handler := http.NewPurchaseHandler(service, rabbitMQ, rabbitExchange)
 
 	// Setup router
 	router := gin.Default()
@@ -41,6 +41,9 @@ func main() {
 	router.POST("/", handler.PostPurchase)
 	router.PUT("/:id", handler.PutPurchase)
 	router.DELETE("/:id", handler.DeletePurchase)
+
+	// CloudEvent endpoint for Knative triggers
+	router.POST("/events", handler.HandleCloudEvent)
 
 	err = router.Run()
 	if err != nil {

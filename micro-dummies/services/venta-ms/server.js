@@ -1,6 +1,7 @@
 const express = require('express');
 const morgan = require('morgan');
 const axios = require('axios');
+const { CloudEvent } = require('cloudevents');
 
 const { logEvent } = require('./ddb-logger');
 const DDB_TABLE = process.env.DDB_TABLE || 'sale-db';
@@ -44,6 +45,76 @@ app.all('/register-sale', async (req, res) => {
     const result = { chain };
     await logEvent({ table: DDB_TABLE, service: SERVICE_NAME, endpoint: '/register-sale', req, result });
     res.json({ service:SERVICE_NAME, endpoint:'/register-sale', chain, time:new Date().toISOString() });
+});
+
+// CloudEvent endpoint for Knative triggers
+app.post('/events', async (req, res) => {
+    try {
+        // Parse the CloudEvent from the HTTP request
+        const cloudEvent = CloudEvent.fromHTTP(req.headers, req.body);
+        
+        // Log the received CloudEvent details
+        console.log('=== CloudEvent Received ===');
+        console.log(`Event ID: ${cloudEvent.id}`);
+        console.log(`Event Type: ${cloudEvent.type}`);
+        console.log(`Event Source: ${cloudEvent.source}`);
+        console.log(`Event Subject: ${cloudEvent.subject || 'N/A'}`);
+        console.log(`Event Time: ${cloudEvent.time || 'N/A'}`);
+        console.log(`Event Data Content Type: ${cloudEvent.datacontenttype || 'N/A'}`);
+        
+        // Log the event data
+        if (cloudEvent.data) {
+            console.log('Event Data:', JSON.stringify(cloudEvent.data, null, 2));
+        }
+        
+        // Log all extensions/attributes
+        console.log('Event Extensions:');
+        Object.entries(cloudEvent).forEach(([key, value]) => {
+            if (!['id', 'type', 'source', 'subject', 'time', 'datacontenttype', 'data'].includes(key)) {
+                console.log(`  ${key}: ${value}`);
+            }
+        });
+        
+        // Log CloudEvent headers for debugging
+        console.log('CloudEvent Headers:');
+        Object.entries(req.headers).forEach(([key, value]) => {
+            console.log(`  ${key}: ${value}`);
+        });
+        
+        console.log('=== End CloudEvent ===');
+        
+        // Log the event to DynamoDB
+        await logEvent({ 
+            table: DDB_TABLE, 
+            service: SERVICE_NAME, 
+            endpoint: '/events', 
+            req, 
+            result: { 
+                cloudEvent: {
+                    id: cloudEvent.id,
+                    type: cloudEvent.type,
+                    source: cloudEvent.source,
+                    data: cloudEvent.data
+                }
+            } 
+        });
+        
+        // Respond with success
+        res.json({
+            message: 'CloudEvent received and logged successfully',
+            eventId: cloudEvent.id,
+            eventType: cloudEvent.type,
+            service: SERVICE_NAME,
+            time: new Date().toISOString()
+        });
+        
+    } catch (error) {
+        console.error('Failed to process CloudEvent:', error);
+        res.status(400).json({ 
+            error: 'Invalid CloudEvent format',
+            message: error.message 
+        });
+    }
 });
 
 app.listen(PORT, () => console.log(`${SERVICE_NAME} listening on ${PORT}`));
