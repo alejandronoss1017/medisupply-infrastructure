@@ -9,11 +9,10 @@ class DynamoDBContractRepository extends ContractRepository {
         this.tableName = config.tableName || 'contracts-db';
 
         const client = new DynamoDBClient({
-            region: config.region || process.env.AWS_REGION || 'us-east-1',
+            region: config.region || process.env.AWS_REGION || 'us-east-2',
             credentials: (config.accessKeyId && config.secretAccessKey) ? {
                 accessKeyId: config.accessKeyId,
                 secretAccessKey: config.secretAccessKey,
-                sessionToken: config.sessionToken
             } : undefined,
         });
 

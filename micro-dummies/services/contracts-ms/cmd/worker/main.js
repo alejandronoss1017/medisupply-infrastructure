@@ -55,18 +55,19 @@ async function main() {
         console.log(`Starting ${SERVICE_NAME}...`);
         console.log(`Kafka brokers: ${KAFKA_BROKERS.join(', ')}`);
         console.log(`Subscribing to topics: ${KAFKA_TOPICS.join(', ')}`);
-        console.log(`DynamoDB table: ${DDB_TABLE}`);
+        // console.log(`DynamoDB table: ${DDB_TABLE}`);
 
-        const dynamoConfig = {
-            tableName: DDB_TABLE,
-            region: AWS_REGION,
-            endpoint: DDB_ENDPOINT,
-            accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-            secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
-            sessionToken: process.env.AWS_SESSION_TOKEN
-        };
-        const repository = new DynamoDBContractRepository(dynamoConfig);
-        contractService = new ContractServiceImpl(repository);
+       // const dynamoConfig = {
+       //     tableName: DDB_TABLE,
+       //     region: AWS_REGION,
+       //     endpoint: DDB_ENDPOINT,
+       //     accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+       //     secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+       // };
+
+
+        // const repository = new DynamoDBContractRepository(dynamoConfig);
+        // contractService = new ContractServiceImpl(repository);
 
         await ensureTopicsExist(KAFKA_BROKERS, KAFKA_TOPICS, {
             numPartitions: KAFKA_DEFAULT_PARTITIONS,
