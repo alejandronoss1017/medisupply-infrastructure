@@ -60,6 +60,8 @@ class KafkaConsumer {
                     }
                 }
             });
+            // Keep the promise pending indefinitely to prevent process exit
+            await new Promise(() => {});
         } catch (error) {
             console.error('Error in consumer run:', error);
             throw error;

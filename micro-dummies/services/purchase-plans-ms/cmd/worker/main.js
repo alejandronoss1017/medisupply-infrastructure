@@ -148,7 +148,7 @@ async function main() {
 
         await kafkaConsumer.subscribe(KAFKA_TOPICS);
         console.log('Starting to consume messages...');
-        kafkaConsumer.consume();
+        await kafkaConsumer.consume();
 
         const gracefulShutdown = async () => {
             console.log('\nShutting down gracefully...');
