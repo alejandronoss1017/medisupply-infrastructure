@@ -1,8 +1,6 @@
 // Main entry point for Kafka consumer worker
 const { Kafka } = require('kafkajs');
 const { KafkaConsumer } = require('../../internal/adapter/kafka/consumer');
-const { ContractServiceImpl } = require('../../internal/core/application/service');
-const { DynamoDBContractRepository } = require('../../internal/adapter/dynamodb/repository');
 
 const SERVICE_NAME = process.env.SERVICE_NAME || 'CONTRACTS-MS-WORKER';
 const KAFKA_BROKERS = (process.env.KAFKA_BROKERS || 'localhost:9092').split(',');
@@ -10,14 +8,9 @@ const KAFKA_CLIENT_ID = process.env.KAFKA_CLIENT_ID || 'contracts-ms-worker';
 const KAFKA_GROUP_ID = process.env.KAFKA_GROUP_ID || 'contracts-worker-group';
 const KAFKA_TOPICS = (process.env.KAFKA_TOPICS || 'supplier-events').split(',').map(t => t.trim()).filter(Boolean);
 
-const DDB_TABLE = process.env.DDB_TABLE || 'contracts-db';
-const AWS_REGION = process.env.AWS_REGION || 'us-east-1';
-const DDB_ENDPOINT = process.env.AWS_ENDPOINT_URL_DYNAMODB;
 
 const KAFKA_DEFAULT_PARTITIONS = parseInt(process.env.KAFKA_DEFAULT_PARTITIONS || '1', 10);
 const KAFKA_DEFAULT_REPLICATION_FACTOR = parseInt(process.env.KAFKA_DEFAULT_REPLICATION_FACTOR || '1', 10);
-
-let contractService;
 
 async function ensureTopicsExist(brokers, topics, { numPartitions = 1, replicationFactor = 1 } = {}) {
     if (!topics.length) return;
@@ -39,14 +32,41 @@ async function ensureTopicsExist(brokers, topics, { numPartitions = 1, replicati
     }
 }
 
+async function sendCloudEvent(eventData, eventType, eventId = crypto.randomUUID()) {
+    const response = await fetch(
+        "http://broker-ingress.knative-eventing.svc.cluster.local/order-system/order-broker",
+        {
+            method: "POST",
+            headers: {
+                "Ce-Id": eventId,
+                "Ce-Specversion": "1.0",
+                "Ce-Type": eventType,
+                "Ce-Source": "order-system/order-api",
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify(eventData)
+        }
+    );
+
+    if (!response.ok) {
+        throw new Error(`Failed to send event: ${response.status} ${response.statusText}`);
+    }
+
+    return response;
+}
+
 async function handleMessage(topic, event) {
-    try {
-        console.log(`Processing message from topic ${topic}:`, event.eventType);
-        const result = await contractService.processContractEvent(event);
-        if (result?.success) console.log('Contract created successfully from event');
-        else console.error('Failed to create contract from event:', result?.error);
-    } catch (error) {
-        console.error('Error handling message:', error);
+
+    console.log(`Processing message from topic ${topic}:`, event.eventType);
+
+    try{
+    const response =  await sendCloudEvent(event, event.eventType, event.eventId);
+
+    console.log('Event mesh response status:', response.status);
+    console.log('Event sent to event mesh successfully');
+
+    }catch (e) {
+        console.error('Failed to send event to event mesh:', e);
     }
 }
 
@@ -55,19 +75,6 @@ async function main() {
         console.log(`Starting ${SERVICE_NAME}...`);
         console.log(`Kafka brokers: ${KAFKA_BROKERS.join(', ')}`);
         console.log(`Subscribing to topics: ${KAFKA_TOPICS.join(', ')}`);
-        // console.log(`DynamoDB table: ${DDB_TABLE}`);
-
-       // const dynamoConfig = {
-       //     tableName: DDB_TABLE,
-       //     region: AWS_REGION,
-       //     endpoint: DDB_ENDPOINT,
-       //     accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-       //     secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
-       // };
-
-
-        // const repository = new DynamoDBContractRepository(dynamoConfig);
-        // contractService = new ContractServiceImpl(repository);
 
         await ensureTopicsExist(KAFKA_BROKERS, KAFKA_TOPICS, {
             numPartitions: KAFKA_DEFAULT_PARTITIONS,
