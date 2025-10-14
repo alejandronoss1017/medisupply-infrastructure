@@ -1,21 +1,32 @@
 package http
 
 import (
+	"encoding/json"
 	"errors"
+	"fmt"
+	"log"
 	"net/http"
 
+	"github.com/cloudevents/sdk-go/v2/event"
 	"github.com/gin-gonic/gin"
 
 	"github.com/medisupply/medisupply-infrastructure/micro-dummies/services/purchases/internal/core/application"
+	"github.com/medisupply/medisupply-infrastructure/micro-dummies/services/purchases/internal/core/port/driven"
 	"github.com/medisupply/medisupply-infrastructure/micro-dummies/services/purchases/internal/core/port/driver"
 )
 
 type PurchaseHandler struct {
-	service driver.PurchaseService
+	service   driver.PurchaseService
+	publisher driven.Publisher
+	exchange  string
 }
 
-func NewPurchaseHandler(service driver.PurchaseService) *PurchaseHandler {
-	return &PurchaseHandler{service: service}
+func NewPurchaseHandler(service driver.PurchaseService, publisher driven.Publisher, exchange string) *PurchaseHandler {
+	return &PurchaseHandler{
+		service:   service,
+		publisher: publisher,
+		exchange:  exchange,
+	}
 }
 
 func PongHandler(c *gin.Context) {
@@ -119,4 +130,88 @@ func (h *PurchaseHandler) DeletePurchase(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusNoContent, nil)
+}
+
+// HandleCloudEvent processes CloudEvents received from Knative triggers
+func (h *PurchaseHandler) HandleCloudEvent(c *gin.Context) {
+	//TODO: TEST THIS
+	// Parse the CloudEvent from the HTTP request
+	var cloudEvent event.Event
+	if err := cloudEvent.UnmarshalJSON(c.Request.Body); err != nil {
+		log.Printf("Failed to unmarshal CloudEvent: %v", err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid CloudEvent format"})
+		return
+	}
+
+	// Log the received CloudEvent details
+	log.Printf("=== CloudEvent Received ===")
+	log.Printf("Event ID: %s", cloudEvent.ID())
+	log.Printf("Event Type: %s", cloudEvent.Type())
+	log.Printf("Event Source: %s", cloudEvent.Source())
+	log.Printf("Event Subject: %s", cloudEvent.Subject())
+	log.Printf("Event Time: %s", cloudEvent.Time())
+	log.Printf("Event Data Content Type: %s", cloudEvent.DataContentType())
+	
+	// Log the event data
+	if cloudEvent.Data() != nil {
+		dataBytes, err := json.MarshalIndent(cloudEvent.Data(), "", "  ")
+		if err != nil {
+			log.Printf("Event Data (raw): %v", cloudEvent.Data())
+		} else {
+			log.Printf("Event Data:\n%s", string(dataBytes))
+		}
+	}
+
+	// Log all extensions/attributes
+	log.Printf("Event Extensions:")
+	for key, value := range cloudEvent.Extensions() {
+		log.Printf("  %s: %v", key, value)
+	}
+
+	// Log CloudEvent headers for debugging
+	log.Printf("CloudEvent Headers:")
+	for key, values := range c.Request.Header {
+		if len(values) > 0 {
+			log.Printf("  %s: %s", key, values[0])
+		}
+	}
+
+	log.Printf("=== End CloudEvent ===")
+
+	// Publish the CloudEvent to RabbitMQ
+	if h.publisher != nil {
+		// Convert CloudEvent to JSON for RabbitMQ
+		eventBytes, err := json.Marshal(cloudEvent)
+		if err != nil {
+			log.Printf("Failed to marshal CloudEvent for RabbitMQ: %v", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to process event"})
+			return
+		}
+
+		// Determine routing key based on event type
+		routingKey := "cloud.event"
+		if cloudEvent.Type() != "" {
+			routingKey = fmt.Sprintf("cloud.%s", cloudEvent.Type())
+		}
+
+		// Publish to RabbitMQ
+		err = h.publisher.Publish(h.exchange, routingKey, eventBytes)
+		if err != nil {
+			log.Printf("Failed to publish CloudEvent to RabbitMQ: %v", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to publish event"})
+			return
+		}
+
+		log.Printf("✓ CloudEvent published to RabbitMQ - Exchange: %s, Routing Key: %s", h.exchange, routingKey)
+	} else {
+		log.Printf("⚠️ RabbitMQ publisher not configured, skipping event publishing")
+	}
+
+	// Respond with success
+	c.JSON(http.StatusOK, gin.H{
+		"message":    "CloudEvent received, logged, and published to RabbitMQ successfully",
+		"eventId":    cloudEvent.ID(),
+		"eventType":  cloudEvent.Type(),
+		"published":  h.publisher != nil,
+	})
 }
