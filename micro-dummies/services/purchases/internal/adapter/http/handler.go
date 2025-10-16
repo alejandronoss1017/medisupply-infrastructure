@@ -64,27 +64,29 @@ func (h *PurchaseHandler) GetPurchase(c *gin.Context) {
 }
 
 func (h *PurchaseHandler) PostPurchase(c *gin.Context) {
-	var req struct {
-		Price    float64 `json:"price" binding:"required"`
-		Quantity int     `json:"quantity" binding:"required"`
-	}
+    // Read raw request body since the schema is currently unknown
+    bodyBytes, err := io.ReadAll(c.Request.Body)
+    if err != nil {
+        c.JSON(http.StatusBadRequest, gin.H{"error": "failed to read request body"})
+        return
+    }
 
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
+    // Log the raw body for observability
+    log.Printf("PostPurchase received raw body: %s", string(bodyBytes))
 
-	purchase, err := h.service.CreatePurchase(req.Price, req.Quantity)
-	if err != nil {
-		if errors.Is(err, application.ErrInvalidInput) {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-			return
-		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
+    // Publish raw message to RabbitMQ with a generic routing key
+    if h.publisher != nil {
+        routingKey := "purchase.raw"
+        if err := h.publisher.Publish(h.exchange, routingKey, bodyBytes); err != nil {
+            log.Printf("Failed to publish raw purchase message: %v", err)
+            c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to publish message"})
+            return
+        }
+    } else {
+        log.Printf("RabbitMQ publisher not configured, skipping publish")
+    }
 
-	c.JSON(http.StatusCreated, purchase)
+    c.JSON(http.StatusAccepted, gin.H{"message": "received and processed"})
 }
 
 func (h *PurchaseHandler) PutPurchase(c *gin.Context) {
