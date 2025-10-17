@@ -25,12 +25,11 @@ const PGUSER = process.env.PGUSER || 'app_user';
 const PGPASSWORD = process.env.PGPASSWORD || 'password';
 const PGDATABASE = process.env.PGDATABASE || 'salesdb';
 
-// Optional read host (replica service) — not strictly needed here but ready if you want it
+// Read host (replica service)
 const PGREADHOST = process.env.PGREADHOST || 'pg-postgresql-read';
 
-// Pool options (tweak as you want)
-const pool = new Pool({
-    host: PGHOST,
+// Pool options
+const basePoolOpts = {
     port: PGPORT,
     user: PGUSER,
     password: PGPASSWORD,
@@ -38,7 +37,13 @@ const pool = new Pool({
     max: +(process.env.PG_POOL_MAX || 10),
     idleTimeoutMillis: +(process.env.PG_POOL_IDLE || 30000),
     connectionTimeoutMillis: +(process.env.PG_CONN_TIMEOUT || 5000),
-});
+};
+
+// Primary (writes)
+const pool = new Pool({ host: PGHOST, ...basePoolOpts });
+
+// Replica (reads). If PGREADHOST not set, fallback to primary host.
+const readPool = new Pool({ host: PGREADHOST || PGHOST, ...basePoolOpts });
 
 // ======= Helpers =======
 const FWD = [
@@ -77,24 +82,24 @@ async function callService(base, path, req, { method = 'post', data = {}, params
     }
 }
 
-// Ensure table exists (idempotent)
+// Ensure table exists (idempotent) — do this only on PRIMARY
 async function ensureSchema() {
     await pool.query(`
-    CREATE TABLE IF NOT EXISTS sales (
-      id TEXT PRIMARY KEY,
-      sku TEXT NOT NULL,
-      amount INT NOT NULL,
-      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-    )
-  `);
+        CREATE TABLE IF NOT EXISTS sales (
+                                             id TEXT PRIMARY KEY,
+                                             sku TEXT NOT NULL,
+                                             amount INT NOT NULL,
+                                             created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+            )
+    `);
 }
 
-// Persist sale
+// Persist sale (PRIMARY)
 async function saveSaleToDb({ saleId, sku, amount }) {
     await ensureSchema();
     await pool.query(
         `INSERT INTO sales (id, sku, amount) VALUES ($1, $2, $3)
-     ON CONFLICT (id) DO NOTHING`,
+            ON CONFLICT (id) DO NOTHING`,
         [saleId, sku, amount]
     );
 }
@@ -109,7 +114,7 @@ app.get('/health', (_, res) => {
     res.json({ status: 'ok', service: SERVICE_NAME, time: new Date().toISOString() });
 });
 
-// Readiness/liveness (checks DB connection too)
+// Readiness/liveness (checks PRIMARY DB connection)
 app.get('/ready', async (_, res) => {
     try {
         await pool.query('SELECT 1');
@@ -128,8 +133,18 @@ app.all('/register-sale', async (req, res) => {
     const chain = [];
     const payload = { sku, amount };
 
-    chain.push(await callService(URLs.CENTRO_MS_URL, '/deduct-product-from-stock', req, { method: 'post', data: payload }));
-    chain.push(await callService(URLs.RUTA_MS_URL, '/plan-delivery-route', req, { method: 'post', data: { saleId, sku } }));
+    chain.push(
+        await callService(URLs.CENTRO_MS_URL, '/deduct-product-from-stock', req, {
+            method: 'post',
+            data: payload,
+        })
+    );
+    chain.push(
+        await callService(URLs.RUTA_MS_URL, '/plan-delivery-route', req, {
+            method: 'post',
+            data: { saleId, sku },
+        })
+    );
 
     // Guardar en Postgres (no falla el flujo si PG falla: se registra el error y se continúa)
     let pgStored = false;
@@ -204,16 +219,28 @@ app.post('/events', async (req, res) => {
     }
 });
 
-// Simple listing endpoint (optional) to verify PG writes
+// Simple listing endpoint — READS FROM REPLICA (fallback to primary if needed)
 app.get('/sales', async (req, res) => {
     try {
-        await ensureSchema();
         const limit = Math.min(parseInt(req.query.limit || '50', 10), 200);
-        const r = await pool.query('SELECT id, sku, amount, created_at FROM sales ORDER BY created_at DESC LIMIT $1', [limit]);
-        res.json({ count: r.rowCount, items: r.rows });
+        const r = await readPool.query(
+            'SELECT id, sku, amount, created_at FROM sales ORDER BY created_at DESC LIMIT $1',
+            [limit]
+        );
+        res.json({ count: r.rowCount, items: r.rows, source: 'replica' });
     } catch (e) {
-        console.error('PG select error:', e);
-        res.status(500).json({ error: 'PG select failed', message: e.message });
+        console.error('Replica select error, falling back to primary:', e.message);
+        try {
+            const limit = Math.min(parseInt(req.query.limit || '50', 10), 200);
+            const r = await pool.query(
+                'SELECT id, sku, amount, created_at FROM sales ORDER BY created_at DESC LIMIT $1',
+                [limit]
+            );
+            res.json({ count: r.rowCount, items: r.rows, source: 'primary' });
+        } catch (e2) {
+            console.error('Primary select error:', e2);
+            res.status(500).json({ error: 'PG select failed', message: e2.message });
+        }
     }
 });
 
@@ -226,13 +253,13 @@ app.use((err, _req, res, _next) => {
 // Graceful shutdown
 function shutdown(signal) {
     console.log(`[${signal}] Shutting down...`);
-    pool.end()
+    Promise.all([pool.end(), readPool.end()])
         .then(() => {
-            console.log('PG pool closed');
+            console.log('PG pools closed');
             process.exit(0);
         })
         .catch((e) => {
-            console.error('Error closing PG pool:', e);
+            console.error('Error closing PG pools:', e);
             process.exit(1);
         });
 }
@@ -241,5 +268,5 @@ function shutdown(signal) {
 app.listen(PORT, () => {
     console.log(`${SERVICE_NAME} listening on ${PORT}`);
     console.log(`Write DB → ${PGUSER}@${PGHOST}:${PGPORT}/${PGDATABASE}`);
-    if (PGREADHOST) console.log(`Read DB (optional) → ${PGREADHOST}:5432`);
+    if (PGREADHOST) console.log(`Read DB → ${PGUSER}@${PGREADHOST}:${PGPORT}/${PGDATABASE}`);
 });
