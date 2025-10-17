@@ -64,29 +64,29 @@ func (h *PurchaseHandler) GetPurchase(c *gin.Context) {
 }
 
 func (h *PurchaseHandler) PostPurchase(c *gin.Context) {
-    // Read raw request body since the schema is currently unknown
-    bodyBytes, err := io.ReadAll(c.Request.Body)
-    if err != nil {
-        c.JSON(http.StatusBadRequest, gin.H{"error": "failed to read request body"})
-        return
-    }
+	// Read Cloud Event request body since the schema is currently unknown
+	bodyBytes, err := io.ReadAll(c.Request.Body)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "failed to read request body"})
+		return
+	}
 
-    // Log the raw body for observability
-    log.Printf("PostPurchase received raw body: %s", string(bodyBytes))
+	// Log the raw body for observability
+	log.Printf("PostPurchase received CloudEvent body: %s", string(bodyBytes))
 
-    // Publish raw message to RabbitMQ with a generic routing key
-    if h.publisher != nil {
-        routingKey := "purchase.raw"
-        if err := h.publisher.Publish(h.exchange, routingKey, bodyBytes); err != nil {
-            log.Printf("Failed to publish raw purchase message: %v", err)
-            c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to publish message"})
-            return
-        }
-    } else {
-        log.Printf("RabbitMQ publisher not configured, skipping publish")
-    }
+	// Publish raw message to RabbitMQ with a generic routing key
+	if h.publisher != nil {
+		routingKey := "purchases.events"
+		if err := h.publisher.Publish(h.exchange, routingKey, bodyBytes); err != nil {
+			log.Printf("Failed to publish CloudEvent purchase message: %v", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to publish message"})
+			return
+		}
+	} else {
+		log.Printf("RabbitMQ publisher not configured, skipping publish")
+	}
 
-    c.JSON(http.StatusAccepted, gin.H{"message": "received and processed"})
+	c.JSON(http.StatusAccepted, gin.H{"message": "received and processed"})
 }
 
 func (h *PurchaseHandler) PutPurchase(c *gin.Context) {
