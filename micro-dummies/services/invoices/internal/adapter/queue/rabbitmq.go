@@ -205,7 +205,7 @@ func (r *RabbitMQ) HandlePurchaseEvent(body []byte, invoiceService driver.Invoic
 		}
 
 	default:
-		log.Printf("? UNKNOWN PURCHASE EVENT - Event Type: %s", event.EventType)
+		log.Printf("EVENT RECEIVED - %s", string(body))
 	}
 
 	return nil
