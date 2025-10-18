@@ -2,11 +2,13 @@ package queue
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"strings"
 	"time"
 
+	"github.com/medisupply/medisupply-infrastructure/micro-dummies/services/invoices/internal/core/domain"
 	"github.com/medisupply/medisupply-infrastructure/micro-dummies/services/invoices/internal/core/port/driver"
 	amqp "github.com/rabbitmq/amqp091-go"
 )
@@ -127,12 +129,84 @@ func (r *RabbitMQ) IsConnected() bool {
 
 // HandleInvoiceEvent processes incoming invoice events
 func (r *RabbitMQ) HandleInvoiceEvent(body []byte) error {
-	log.Printf("📄 INVOICE EVENT RECEIVED: %s", string(body))
+	var event domain.InvoiceEvent
+	if err := json.Unmarshal(body, &event); err != nil {
+		log.Printf("ERROR: Failed to unmarshal invoice event: %v", err)
+		return err
+	}
+
+	// Process the event based on type
+	switch event.EventType {
+	case domain.InvoiceCreatedEvent:
+		log.Printf("✓ CREATED - Invoice ID: %s | Buyer: %s | Subtotal: %.2f | Discount: %.2f | Taxes: %.2f | Total: %.2f",
+			event.Invoice.ID,
+			event.Invoice.Buyer,
+			event.Invoice.Subtotal,
+			event.Invoice.Discount,
+			event.Invoice.Taxes,
+			event.Invoice.Total,
+		)
+
+	case domain.InvoiceUpdatedEvent:
+		log.Printf("↻ UPDATED - Invoice ID: %s | Buyer: %s | Subtotal: %.2f | Discount: %.2f | Taxes: %.2f | Total: %.2f",
+			event.Invoice.ID,
+			event.Invoice.Buyer,
+			event.Invoice.Subtotal,
+			event.Invoice.Discount,
+			event.Invoice.Taxes,
+			event.Invoice.Total,
+		)
+
+	case domain.InvoiceDeletedEvent:
+		log.Printf("✗ DELETED - Invoice ID: %s",
+			event.Invoice.ID,
+		)
+
+	default:
+		log.Printf("? UNKNOWN - Event Type: %s", event.EventType)
+	}
+
 	return nil
 }
 
 // HandlePurchaseEvent processes incoming purchase events from the purchases microservice
 func (r *RabbitMQ) HandlePurchaseEvent(body []byte, invoiceService driver.InvoiceService) error {
-	log.Printf("📦 PURCHASE EVENT RECEIVED: %s", string(body))
+	var event domain.PurchaseEvent
+	if err := json.Unmarshal(body, &event); err != nil {
+		log.Printf("ERROR: Failed to unmarshal purchase event: %v", err)
+		return err
+	}
+
+	// Process the event based on type
+	switch event.EventType {
+	case domain.PurchaseCreatedEvent:
+
+	case domain.PurchaseUpdatedEvent:
+		log.Printf("📦 PURCHASE UPDATED - Purchase ID: %s | Price: %.2f | Quantity: %d | Total: %.2f",
+			event.Purchase.ID,
+			event.Purchase.Price,
+			event.Purchase.Quantity,
+			event.Purchase.Total,
+		)
+		// Call the service to handle the update
+		if err := invoiceService.ProcessPurchaseUpdated(event.Purchase); err != nil {
+			log.Printf("ERROR: Failed to handle purchase update: %v", err)
+			return err
+		}
+
+	case domain.PurchaseDeletedEvent:
+		log.Printf("📦 PURCHASE DELETED - Purchase ID: %s",
+			event.Purchase.ID,
+		)
+		// Call the service to handle the deletion if needed
+		if err := invoiceService.ProcessPurchaseDeleted(event.Purchase.ID); err != nil {
+			log.Printf("ERROR: Failed to handle purchase deletion: %v", err)
+			return err
+		}
+
+	default:
+		log.Printf("EVENT RECEIVED - %s", string(body))
+	}
+
 	return nil
 }
