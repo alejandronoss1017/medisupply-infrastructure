@@ -44,7 +44,7 @@ async function handleMessage(topic, event) {
         console.log(`Processing message from topic ${topic}:`, event.eventType);
         const result = await purchasePlanService.processPurchasePlanEvent(event);
         // add event to event mesh
-        await addEventToEventMesh(event);
+        //await addEventToEventMesh(event);
         if (result?.success) console.log('Purchase plan created successfully from event');
         else console.error('Failed to create purchase plan from event:', result?.error);
     } catch (error) {
