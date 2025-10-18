@@ -2,26 +2,18 @@
 const express = require('express');
 const morgan = require('morgan');
 const { PurchasePlanServiceImpl } = require('../../internal/core/application/service');
-const { DynamoDBPurchasePlanRepository } = require('../../internal/adapter/dynamodb/repository');
+const { InMemoryPurchasePlanRepository } = require('../../internal/adapter/memory/repository');
 const { PurchasePlanHandler } = require('../../internal/adapter/http/handler');
 
 const SERVICE_NAME = process.env.SERVICE_NAME || 'PURCHASE-PLANS-MS';
 const PORT = process.env.PORT || 3004;
-const AWS_REGION = process.env.AWS_REGION || 'us-east-1';
-const DYNAMODB_TABLE = process.env.DYNAMODB_TABLE || 'purchase-plans';
 
 async function main() {
     try {
         console.log(`Starting ${SERVICE_NAME}...`);
-        console.log(`DynamoDB region: ${AWS_REGION}`);
-        console.log(`DynamoDB table: ${DYNAMODB_TABLE}`);
 
-        // Initialize DynamoDB repository
-        const repositoryConfig = {
-            region: AWS_REGION,
-            tableName: DYNAMODB_TABLE
-        };
-        const repository = new DynamoDBPurchasePlanRepository(repositoryConfig);
+        // Initialize in-memory repository
+        const repository = new InMemoryPurchasePlanRepository();
 
         // Initialize service
         const purchasePlanService = new PurchasePlanServiceImpl(repository);
@@ -35,7 +27,7 @@ async function main() {
         app.use(morgan('dev'));
 
         // Health check endpoint
-        this.router.get('/health', (_, res) => {
+        app.get('/health', (_, res) => {
             res.json({
                 status: 'ok',
                 service: process.env.SERVICE_NAME || 'PURCHASE-PLANS-MS',

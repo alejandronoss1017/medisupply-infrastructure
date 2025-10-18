@@ -2,7 +2,7 @@
 const { Kafka } = require('kafkajs'); // for admin API
 const { KafkaConsumer } = require('../../internal/adapter/kafka/consumer');
 const { PurchasePlanServiceImpl } = require('../../internal/core/application/service');
-const { DynamoDBPurchasePlanRepository } = require('../../internal/adapter/dynamodb/repository');
+const { InMemoryPurchasePlanRepository } = require('../../internal/adapter/memory/repository');
 
 const SERVICE_NAME = process.env.SERVICE_NAME || 'PURCHASE-PLANS-MS-WORKER';
 const KAFKA_BROKERS = (process.env.KAFKA_BROKERS || 'localhost:9092').split(',');
@@ -10,9 +10,7 @@ const KAFKA_CLIENT_ID = process.env.KAFKA_CLIENT_ID || 'purchase-plans-ms-worker
 const KAFKA_GROUP_ID = process.env.KAFKA_GROUP_ID || 'purchase-plans-worker-group';
 const KAFKA_TOPICS = (process.env.KAFKA_TOPICS || 'supplier-events').split(',').map(t => t.trim()).filter(Boolean);
 
-const DDB_TABLE = process.env.DDB_TABLE || 'purchase-plans-db';
-const AWS_REGION = process.env.AWS_REGION || 'us-east-1';
-const DDB_ENDPOINT = process.env.AWS_ENDPOINT_URL_DYNAMODB; // e.g. http://dynamodb-local:8000
+// Removed DynamoDB configuration - using in-memory storage
 
 const KAFKA_DEFAULT_PARTITIONS = parseInt(process.env.KAFKA_DEFAULT_PARTITIONS || '1', 10);
 const KAFKA_DEFAULT_REPLICATION_FACTOR = parseInt(process.env.KAFKA_DEFAULT_REPLICATION_FACTOR || '1', 10);
@@ -120,18 +118,9 @@ async function main() {
         console.log(`Starting ${SERVICE_NAME}...`);
         console.log(`Kafka brokers: ${KAFKA_BROKERS.join(', ')}`);
         console.log(`Subscribing to topics: ${KAFKA_TOPICS.join(', ')}`);
-        console.log(`DynamoDB table: ${DDB_TABLE}`);
 
-        // DynamoDB repository
-        const dynamoConfig = {
-            tableName: DDB_TABLE,
-            region: AWS_REGION,
-            endpoint: DDB_ENDPOINT, // works with DynamoDB Local
-            accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-            secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
-            sessionToken: process.env.AWS_SESSION_TOKEN
-        };
-        const repository = new DynamoDBPurchasePlanRepository(dynamoConfig);
+        // In-memory repository
+        const repository = new InMemoryPurchasePlanRepository();
         purchasePlanService = new PurchasePlanServiceImpl(repository);
 
         // Ensure topics exist BEFORE subscribe
