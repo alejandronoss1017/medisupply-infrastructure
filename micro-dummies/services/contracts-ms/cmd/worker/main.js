@@ -32,42 +32,8 @@ async function ensureTopicsExist(brokers, topics, { numPartitions = 1, replicati
     }
 }
 
-async function sendCloudEvent(eventData, eventType, eventId = crypto.randomUUID()) {
-    const response = await fetch(
-        EVENT_MESH_URL,
-        {
-            method: "POST",
-            headers: {
-                "Ce-Id": eventId,
-                "Ce-Specversion": "1.0",
-                "Ce-Type": eventType,
-                "Ce-Source": "order-system/order-api",
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify(eventData)
-        }
-    );
-
-    if (!response.ok) {
-        throw new Error(`Failed to send event: ${response.status} ${response.statusText}`);
-    }
-
-    return response;
-}
-
 async function handleMessage(topic, event) {
-
     console.log(`Processing message from topic ${topic}:`, event.eventType);
-
-    try{
-    const response =  await sendCloudEvent(event, event.eventType, event.eventId);
-
-    console.log('Event mesh response status:', response.status);
-    console.log('Event sent to event mesh successfully');
-
-    }catch (e) {
-        console.error('Failed to send event to event mesh:', e);
-    }
 }
 
 async function main() {
