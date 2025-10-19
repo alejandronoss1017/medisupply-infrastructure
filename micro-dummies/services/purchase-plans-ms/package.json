@@ -8,8 +8,6 @@
     "start": "node cmd/web/main.js"
   },
   "dependencies": {
-    "@aws-sdk/client-dynamodb": "^3.883.0",
-    "@aws-sdk/lib-dynamodb": "^3.883.0",
     "uuid": "^12.0.0",
     "kafkajs": "^2.2.4",
     "express": "^4.18.2",
@@ -19,7 +17,6 @@
     "microservice",
     "hexagonal",
     "kafka",
-    "dynamodb",
     "purchase-plans"
   ],
   "author": "",
