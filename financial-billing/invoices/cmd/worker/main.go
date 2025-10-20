@@ -36,19 +36,27 @@ func main() {
 	log.Println("Starting Invoice Service Events Consumer...")
 	log.Printf("  - Consuming from purchases queue: %s", rabbitQueue)
 
+	// Channel to receive errors from consumer (connection issues)
+	done := make(chan error, 1)
+
 	// Start consuming purchase events
 	if err = rabbitMQ.Consume(rabbitQueue, func(body []byte) error {
 		return rabbitMQ.HandlePurchaseEvent(body, invoiceService)
-	}); err != nil {
+	}, done); err != nil {
 		log.Fatalf("Failed to start consumer: %v", err)
 	}
 
 	log.Println("Consumer started. Waiting for purchase update events...")
 
-	// Wait for interrupt signal
+	// Wait for interrupt signal or connection error
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
-	<-quit
 
-	log.Println("Shutting down consumer...")
+	select {
+	case <-quit:
+		log.Println("Shutting down consumer gracefully...")
+	case err := <-done:
+		log.Printf("Consumer stopped due to error: %v", err)
+		log.Println("Exiting... (process manager should restart the service)")
+	}
 }

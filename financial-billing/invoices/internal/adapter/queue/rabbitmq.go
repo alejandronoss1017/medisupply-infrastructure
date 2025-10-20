@@ -75,8 +75,8 @@ func (r *RabbitMQ) Publish(exchange, routingKey string, body []byte) error {
 	return nil
 }
 
-// Consume starts consuming messages from a queue
-func (r *RabbitMQ) Consume(queueName string, handler func([]byte) error) error {
+// Consume starts consuming messages from a queue with connection monitoring
+func (r *RabbitMQ) Consume(queueName string, handler func([]byte) error, done chan error) error {
 	messages, err := r.channel.Consume(
 		queueName, // queue
 		"",        // consumer
@@ -90,15 +90,35 @@ func (r *RabbitMQ) Consume(queueName string, handler func([]byte) error) error {
 		return fmt.Errorf("failed to register consumer: %w", err)
 	}
 
+	// Monitor connection and channel closures
+	connClosed := r.conn.NotifyClose(make(chan *amqp.Error))
+	chanClosed := r.channel.NotifyClose(make(chan *amqp.Error))
+
 	go func() {
-		for msg := range messages {
-			if err = handler(msg.Body); err != nil {
-				log.Printf("Error handling message: %v", err)
-				// Negative acknowledgment - requeue the message
-				msg.Nack(false, true)
-			} else {
-				// Positive acknowledgment
-				msg.Ack(false)
+		for {
+			select {
+			case msg, ok := <-messages:
+				if !ok {
+					log.Println("Messages channel closed")
+					done <- fmt.Errorf("messages channel closed")
+					return
+				}
+				if err = handler(msg.Body); err != nil {
+					log.Printf("Error handling message: %v", err)
+					// Negative acknowledgment - requeue the message
+					msg.Nack(false, true)
+				} else {
+					// Positive acknowledgment
+					msg.Ack(false)
+				}
+			case err := <-connClosed:
+				log.Printf("RabbitMQ connection closed: %v", err)
+				done <- fmt.Errorf("connection closed: %w", err)
+				return
+			case err := <-chanClosed:
+				log.Printf("RabbitMQ channel closed: %v", err)
+				done <- fmt.Errorf("channel closed: %w", err)
+				return
 			}
 		}
 	}()
