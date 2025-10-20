@@ -22,7 +22,7 @@ COPY . .
 RUN go mod tidy
 
 # Build the application with dynamic linking to librdkafka
-RUN go build -tags dynamic -o main ./cmd/web
+RUN go build -tags dynamic -o main ./cmd/consumer
 
 # Runtime stage
 FROM golang:1.24-alpine AS runtime
