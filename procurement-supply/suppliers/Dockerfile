@@ -1,10 +1,12 @@
 # Build stage
-FROM golang:1.24 AS builder
+FROM golang:1.24-alpine AS builder
 
-# Install librdkafka development libraries
-RUN apt-get update && apt-get install -y \
+# Install build dependencies including musl-dev for static compilation
+RUN apk add --no-cache \
+    gcc \
+    musl-dev \
     librdkafka-dev \
-    && rm -rf /var/lib/apt/lists/*
+    pkgconfig
 
 # Set working directory
 WORKDIR /app
@@ -21,14 +23,16 @@ COPY . .
 # Verify module and tidy dependencies
 RUN go mod tidy
 
-# Build the application with dynamic linking to librdkafka
-RUN go build -tags dynamic -o main ./cmd/web
+# Build the application with dynamic linking (no vendored librdkafka)
+RUN CGO_ENABLED=1 go build -tags dynamic -o main ./cmd/web
 
 # Runtime stage
 FROM golang:1.24-alpine AS runtime
 
-# Install librdkafka runtime libraries
-RUN apk add --no-cache librdkafka
+# Install runtime dependencies
+RUN apk add --no-cache \
+    ca-certificates \
+    librdkafka
 
 # Create a non-root user
 RUN addgroup -g 1001 -S appgroup && \
