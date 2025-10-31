@@ -112,7 +112,7 @@ func NewSmartContractClient(rcpURL, address, key, path string) (*SmartContractCl
 //
 //	var info Info
 //	if err := client.InvoqueContract(ctx, "getInfo", &info); err != nil { /* handle */ }
-func (c *SmartContractClient) InvoqueContract(ctx context.Context, method string, out *any, args ...any) error {
+func (c *SmartContractClient) InvoqueContract(ctx context.Context, method string, out any, args ...any) error {
 	// Validate method exists (gives a better error than Pack for unknown method)
 	input, err := c.packMethodInput(method, args...)
 	if err != nil {
