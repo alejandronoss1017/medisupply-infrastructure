@@ -46,3 +46,9 @@ app.all('/register-lot', async (req, res) => {
 });
 
 app.listen(PORT, () => console.log(`${SERVICE_NAME} listening on ${PORT}`));
+
+app.post('/events/purchases', (req, res) => {
+    const cloudEvent = req.body;
+    console.log('Received purchase event:', cloudEvent.data);
+    res.status(200).send('OK');
+});
