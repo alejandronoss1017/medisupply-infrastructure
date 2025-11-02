@@ -82,8 +82,8 @@ func NewSmartContractClient(rcpURL, address, key, path string) (*SmartContractCl
 	}, nil
 }
 
-// InvoqueContract calls a constant (read-only) method on the configured contract
-// and decodes the return values into out.
+// CallContractMethod calls a constant (read-only) method on the configured contract
+// and decodes the return values into out. This does not send a transaction and costs no gas.
 // Supported bindings:
 // - Single return value: pass a pointer to the Go type (e.g. *uint64, *bool, *string, *common.Address)
 // - Multiple return values: pass a pointer to a struct with fields in order or tagged with `abi:"<index or name>"`
@@ -103,7 +103,7 @@ func NewSmartContractClient(rcpURL, address, key, path string) (*SmartContractCl
 // Examples:
 //
 //	var bal *big.Int
-//	if err := client.InvoqueContract(ctx, "balanceOf", &bal, addr); err != nil { /* handle */ }
+//	if err := client.CallContractMethod(ctx, "balanceOf", &bal, addr); err != nil { /* handle */ }
 //
 //	type Info struct {
 //	    Name  string          `abi:"0"` // or use output names if defined in the ABI
@@ -111,8 +111,8 @@ func NewSmartContractClient(rcpURL, address, key, path string) (*SmartContractCl
 //	}
 //
 //	var info Info
-//	if err := client.InvoqueContract(ctx, "getInfo", &info); err != nil { /* handle */ }
-func (c *SmartContractClient) InvoqueContract(ctx context.Context, method string, out any, args ...any) error {
+//	if err := client.CallContractMethod(ctx, "getInfo", &info); err != nil { /* handle */ }
+func (c *SmartContractClient) CallContractMethod(ctx context.Context, method string, out any, args ...any) error {
 	// Validate method exists (gives a better error than Pack for unknown method)
 	input, err := c.packMethodInput(method, args...)
 	if err != nil {
@@ -137,7 +137,8 @@ func (c *SmartContractClient) InvoqueContract(ctx context.Context, method string
 	return nil
 }
 
-// InvoqueContractWrite sends a state-changing transaction to the configured contract.
+// SendContractTransaction sends a state-changing transaction to the configured contract.
+// This costs gas and modifies the blockchain state.
 // It packs the given method and args using the loaded ABI, estimates gas, builds
 // an EIP-1559 transaction (falling back to legacy if base fee is unavailable),
 // signs it with the client's private key, and broadcasts it.
@@ -154,7 +155,7 @@ func (c *SmartContractClient) InvoqueContract(ctx context.Context, method string
 //
 //	The broadcasted transaction and/or an error if any step fails (pack, gas
 //	estimation, fee calculation, signing, or RPC broadcast).
-func (c *SmartContractClient) InvoqueContractWrite(ctx context.Context, method string, value *big.Int, args ...any) (*types.Transaction, error) {
+func (c *SmartContractClient) SendContractTransaction(ctx context.Context, method string, value *big.Int, args ...any) (*types.Transaction, error) {
 	input, err := c.packMethodInput(method, args...)
 	if err != nil {
 		return nil, err

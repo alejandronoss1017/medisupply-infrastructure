@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"log"
+	"math/big"
 	"novelties/internal/adapter/ethereum"
 	"novelties/internal/adapter/http"
 	"os"
@@ -26,12 +27,21 @@ func main() {
 
 	var value any
 
-	err = client.InvoqueContract(ctx, "retrieveNumber", &value)
+	log.Println(value)
+
+	observed := big.NewInt(12345)
+	slaId := big.NewInt(0)
+	note := "Test note"
+
+	tx, err := client.SendContractTransaction(ctx, "reportMetric", nil, slaId, observed, note)
 	if err != nil {
-		log.Fatalf("failed to retrieve number: %v", err)
+		log.Fatalf("failed to report metric: %v", err)
 	}
 
-	log.Println(value)
+	_, err = client.WaitTransaction(ctx, tx)
+	if err != nil {
+		log.Fatalf("failed to wait for tx: %v", err)
+	}
 
 	// Setup router
 	router := gin.Default()
