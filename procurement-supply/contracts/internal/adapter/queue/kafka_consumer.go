@@ -127,7 +127,6 @@ func (k *KafkaEventConsumer) handleMessage(msg *kafka.Message) error {
 		"event_type", event.EventType,
 		"medicine_id", event.Data.ID,
 		"medicine_name", event.Data.Name,
-		"event_id", event.ID,
 	)
 
 	// Process the event through the application service
@@ -135,7 +134,6 @@ func (k *KafkaEventConsumer) handleMessage(msg *kafka.Message) error {
 		k.logger.Errorw("Error processing event",
 			"error", err,
 			"event_type", event.EventType,
-			"event_id", event.ID,
 		)
 		// Depending on your error handling strategy, you might want to:
 		// - Return the error to stop processing
