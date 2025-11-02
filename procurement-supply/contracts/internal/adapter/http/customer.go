@@ -2,74 +2,63 @@ package http
 
 import (
 	"contracts/internal/core/domain"
+	"contracts/internal/core/port/driver"
 	"net/http"
-	"strconv"
-	"sync"
-	"time"
 
 	"github.com/gin-gonic/gin"
 )
 
-// CustomerHandler manages in-memory CRUD for customers
+// CustomerHandler is a thin HTTP adapter that delegates to the CustomerService
 type CustomerHandler struct {
-	mu        sync.RWMutex
-	customers map[string]domain.Customer
-	idSeq     int64
+	service driver.CustomerService
 }
 
-func NewCustomerHandler() *CustomerHandler {
+// NewCustomerHandler creates a new customer handler
+func NewCustomerHandler(service driver.CustomerService) *CustomerHandler {
 	return &CustomerHandler{
-		customers: make(map[string]domain.Customer),
-		idSeq:     time.Now().UnixNano(),
+		service: service,
 	}
 }
 
+// GetCustomers returns all customers
 func (h *CustomerHandler) GetCustomers(c *gin.Context) {
-	h.mu.RLock()
-	defer h.mu.RUnlock()
-	list := make([]domain.Customer, 0, len(h.customers))
-	for _, v := range h.customers {
-		list = append(list, v)
-	}
-	c.JSON(http.StatusOK, list)
-}
-
-func (h *CustomerHandler) GetCustomer(c *gin.Context) {
-	id := c.Param("id")
-	h.mu.RLock()
-	defer h.mu.RUnlock()
-	if v, ok := h.customers[id]; ok {
-		c.JSON(http.StatusOK, v)
+	customers, err := h.service.RetrieveCustomers()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusNotFound, gin.H{"error": "customer not found"})
+	c.JSON(http.StatusOK, customers)
 }
 
+// GetCustomer returns a customer by id
+func (h *CustomerHandler) GetCustomer(c *gin.Context) {
+	id := c.Param("id")
+	customer, err := h.service.RetrieveCustomer(id)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "customer not found"})
+		return
+	}
+	c.JSON(http.StatusOK, customer)
+}
+
+// PostCustomer creates a new customer
 func (h *CustomerHandler) PostCustomer(c *gin.Context) {
 	var payload domain.Customer
 	if err := c.ShouldBindJSON(&payload); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	if payload.ID == "" {
-		h.mu.Lock()
-		h.idSeq++
-		payload.ID = strconv.FormatInt(h.idSeq, 10)
-		h.customers[payload.ID] = payload
-		h.mu.Unlock()
-	} else {
-		h.mu.Lock()
-		if _, exists := h.customers[payload.ID]; exists {
-			h.mu.Unlock()
-			c.JSON(http.StatusConflict, gin.H{"error": "customer with given id already exists"})
-			return
-		}
-		h.customers[payload.ID] = payload
-		h.mu.Unlock()
+
+	customer, err := h.service.CreateCustomer(payload)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
 	}
-	c.JSON(http.StatusCreated, payload)
+
+	c.JSON(http.StatusCreated, customer)
 }
 
+// PutCustomer updates an existing customer
 func (h *CustomerHandler) PutCustomer(c *gin.Context) {
 	id := c.Param("id")
 	var payload domain.Customer
@@ -77,29 +66,28 @@ func (h *CustomerHandler) PutCustomer(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+
 	if payload.ID != "" && payload.ID != id {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "id in path and body must match (or omit body id)"})
 		return
 	}
 	payload.ID = id
-	h.mu.Lock()
-	defer h.mu.Unlock()
-	if _, ok := h.customers[id]; !ok {
-		c.JSON(http.StatusNotFound, gin.H{"error": "customer not found"})
+
+	customer, err := h.service.UpdateCustomer(payload)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
 		return
 	}
-	h.customers[id] = payload
-	c.JSON(http.StatusOK, payload)
+
+	c.JSON(http.StatusOK, customer)
 }
 
+// DeleteCustomer removes a customer by id
 func (h *CustomerHandler) DeleteCustomer(c *gin.Context) {
 	id := c.Param("id")
-	h.mu.Lock()
-	defer h.mu.Unlock()
-	if _, ok := h.customers[id]; !ok {
-		c.JSON(http.StatusNotFound, gin.H{"error": "customer not found"})
+	if err := h.service.DeleteCustomer(id); err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
 		return
 	}
-	delete(h.customers, id)
 	c.Status(http.StatusNoContent)
 }

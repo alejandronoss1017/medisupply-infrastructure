@@ -1,23 +1,52 @@
 package main
 
 import (
+	"contracts/internal/adapter/ethereum"
 	"contracts/internal/adapter/http"
+	"contracts/internal/adapter/storage/memory"
+	"contracts/internal/core/application"
 	"log"
+	"os"
 
 	"github.com/gin-gonic/gin"
 )
 
 func main() {
+
+	// Load environment variables
+	rcpURL := os.Getenv("RCP_URL")
+	smartContractAddress := os.Getenv("SMART_CONTRACT_ADDRESS")
+	privateKey := os.Getenv("PRIVATE_KEY")
+	abiPath := os.Getenv("ABI_PATH")
+
+	// Initialize Ethereum client
+	client, err := ethereum.NewSmartContractClient(rcpURL, smartContractAddress, privateKey, abiPath)
+	if err != nil {
+		log.Fatalf("failed to create Ethereum client: %v", err)
+	}
+
+	// Initialize repositories (driven adapters)
+	contractRepo := memory.NewContractRepository()
+	customerRepo := memory.NewCustomerRepository()
+	slaRepo := memory.NewSLARepository()
+
+	// Initialize application services (business logic)
+	contractService := application.NewContractService(contractRepo, client)
+	customerService := application.NewCustomerService(customerRepo)
+	slaService := application.NewSLAService(slaRepo)
+
+	// Initialize HTTP handlers (driver adapters)
+	contractHandler := http.NewContractHandler(contractService)
+	customerHandler := http.NewCustomerHandler(customerService)
+	slaHandler := http.NewSLAHandler(slaService)
+
 	// Setup router
 	router := gin.Default()
-
-	contractHandler := http.NewContractHandler()
-	customerHandler := http.NewCustomerHandler()
-	slaHandler := http.NewSLAHandler()
 
 	// Health check
 	router.GET("/ping", http.PongHandler)
 
+	// Contract routes
 	contractsRoutes := router.Group("/contracts")
 	{
 		contractsRoutes.GET("", contractHandler.GetContracts)
@@ -27,6 +56,7 @@ func main() {
 		contractsRoutes.DELETE("/:id", contractHandler.DeleteContract)
 	}
 
+	// Customer routes
 	customersRoutes := router.Group("/customers")
 	{
 		customersRoutes.GET("", customerHandler.GetCustomers)
@@ -36,6 +66,7 @@ func main() {
 		customersRoutes.DELETE("/:id", customerHandler.DeleteCustomer)
 	}
 
+	// SLA routes
 	slaRoutes := router.Group("/slas")
 	{
 		slaRoutes.GET("", slaHandler.GetSLAs)
@@ -45,6 +76,8 @@ func main() {
 		slaRoutes.DELETE("/:id", slaHandler.DeleteSLA)
 	}
 
+	// Start server
+	log.Println("Starting server on :8080...")
 	if err := router.Run(); err != nil {
 		log.Fatalf("failed to start server: %v", err)
 	}

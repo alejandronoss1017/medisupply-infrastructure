@@ -2,49 +2,43 @@ package http
 
 import (
 	"contracts/internal/core/domain"
+	"contracts/internal/core/port/driver"
 	"net/http"
-	"strconv"
-	"sync"
-	"time"
 
 	"github.com/gin-gonic/gin"
 )
 
+// ContractHandler is a thin HTTP adapter that delegates to the ContractService
 type ContractHandler struct {
-	mu        sync.RWMutex
-	contracts map[string]domain.Contract
-	idSeq     int64
+	service driver.ContractService
 }
 
-func NewContractHandler() *ContractHandler {
+// NewContractHandler creates a new contract handler
+func NewContractHandler(service driver.ContractService) *ContractHandler {
 	return &ContractHandler{
-		contracts: make(map[string]domain.Contract),
-		idSeq:     time.Now().UnixNano(),
+		service: service,
 	}
 }
 
 // GetContracts returns all contracts
 func (h *ContractHandler) GetContracts(c *gin.Context) {
-	h.mu.RLock()
-	defer h.mu.RUnlock()
-
-	list := make([]domain.Contract, 0, len(h.contracts))
-	for _, v := range h.contracts {
-		list = append(list, v)
+	contracts, err := h.service.RetrieveContracts()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
 	}
-	c.JSON(http.StatusOK, list)
+	c.JSON(http.StatusOK, contracts)
 }
 
 // GetContract returns a contract by id
 func (h *ContractHandler) GetContract(c *gin.Context) {
 	id := c.Param("id")
-	h.mu.RLock()
-	defer h.mu.RUnlock()
-	if v, ok := h.contracts[id]; ok {
-		c.JSON(http.StatusOK, v)
+	contract, err := h.service.RetrieveContract(id)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "contract not found"})
 		return
 	}
-	c.JSON(http.StatusNotFound, gin.H{"error": "contract not found"})
+	c.JSON(http.StatusOK, contract)
 }
 
 // PostContract creates a new contract
@@ -55,26 +49,13 @@ func (h *ContractHandler) PostContract(c *gin.Context) {
 		return
 	}
 
-	// Generate ID if empty
-	if payload.ID == "" {
-		h.mu.Lock()
-		h.idSeq++
-		payload.ID = strconv.FormatInt(h.idSeq, 10)
-		h.contracts[payload.ID] = payload
-		h.mu.Unlock()
-	} else {
-		// If provided ID already exists, reject
-		h.mu.Lock()
-		if _, exists := h.contracts[payload.ID]; exists {
-			h.mu.Unlock()
-			c.JSON(http.StatusConflict, gin.H{"error": "contract with given id already exists"})
-			return
-		}
-		h.contracts[payload.ID] = payload
-		h.mu.Unlock()
+	contract, err := h.service.CreateContract(c.Request.Context(), payload)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
 	}
 
-	c.JSON(http.StatusCreated, payload)
+	c.JSON(http.StatusCreated, contract)
 }
 
 // PutContract updates an existing contract (full replacement)
@@ -92,25 +73,21 @@ func (h *ContractHandler) PutContract(c *gin.Context) {
 	}
 	payload.ID = id
 
-	h.mu.Lock()
-	defer h.mu.Unlock()
-	if _, ok := h.contracts[id]; !ok {
-		c.JSON(http.StatusNotFound, gin.H{"error": "contract not found"})
+	contract, err := h.service.UpdateContract(payload)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
 		return
 	}
-	h.contracts[id] = payload
-	c.JSON(http.StatusOK, payload)
+
+	c.JSON(http.StatusOK, contract)
 }
 
 // DeleteContract removes a contract by id
 func (h *ContractHandler) DeleteContract(c *gin.Context) {
 	id := c.Param("id")
-	h.mu.Lock()
-	defer h.mu.Unlock()
-	if _, ok := h.contracts[id]; !ok {
-		c.JSON(http.StatusNotFound, gin.H{"error": "contract not found"})
+	if err := h.service.DeleteContract(id); err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
 		return
 	}
-	delete(h.contracts, id)
 	c.Status(http.StatusNoContent)
 }

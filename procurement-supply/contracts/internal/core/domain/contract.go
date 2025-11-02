@@ -1,8 +1,8 @@
 package domain
 
 type Contract struct {
-	ID         string `json:"id"`
-	Path       string `json:"path"`
-	CustomerID string `json:"customerId"`
-	SLAs       []SLA  `json:"slas"`
+	ID         string `json:"id" abi:"id"`
+	Path       string `json:"path" abi:"path"`
+	CustomerID string `json:"customerId" abi:"clientId"`
+	SLAs       []SLA  `json:"slas" abi:"slas"`
 }
