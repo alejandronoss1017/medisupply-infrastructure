@@ -4,7 +4,7 @@ services:
     container_name: ruta-ms
     environment:
       - SERVICE_NAME=RUTA MS
-      - NORMATIVA_MS_URL=http://normativa-ms:3000
+      - NORMATIVA_MS_URL=http://normatives:3000
       - VEHICULO_MS_URL=http://vehiculo-ms:3000
       # --- Optional: DynamoDB logging (only if your image tag includes it) ---
       # - AWS_REGION=us-east-1
@@ -24,7 +24,7 @@ services:
 
   centro-distribucion-ms:
     image: public.ecr.aws/q2b4w2e6/dummies/centro-distribucion-ms:1.1.0
-    container_name: centro-distribucion-ms
+    container_name: distribution-centers
     environment:
       - SERVICE_NAME=CENTRO DE DISTRIBUCION MS
       # --- Optional DDB ---
@@ -42,11 +42,11 @@ services:
 
   lote-ms:
     image: public.ecr.aws/q2b4w2e6/dummies/lote-ms:1.1.0
-    container_name: lote-ms
+    container_name: batches
     environment:
       - SERVICE_NAME=LOTE MS
-      - NORMATIVA_MS_URL=http://normativa-ms:3000
-      - CENTRO_MS_URL=http://centro-distribucion-ms:3000
+      - NORMATIVA_MS_URL=http://normatives:3000
+      - CENTRO_MS_URL=http://distribution-centers:3000
       # --- Optional DDB ---
       # - AWS_REGION=us-east-1
       # - AWS_ACCESS_KEY_ID=YOUR_KEY
@@ -83,7 +83,7 @@ services:
 
   normativa-ms:
     image: public.ecr.aws/q2b4w2e6/dummies/normativa-ms:1.1.0
-    container_name: normativa-ms
+    container_name: normatives
     environment:
       - SERVICE_NAME=NORMATIVA MS
       - ALERTA_MS_URL=http://alerta-ms:3000
@@ -122,10 +122,10 @@ services:
 
   venta-ms:
     image: public.ecr.aws/q2b4w2e6/dummies/venta-ms:1.1.0
-    container_name: venta-ms
+    container_name: sales
     environment:
       - SERVICE_NAME=VENTA MS
-      - CENTRO_MS_URL=http://centro-distribucion-ms:3000
+      - CENTRO_MS_URL=http://distribution-centers:3000
       - RUTA_MS_URL=http://ruta-ms:3000
       # --- Optional DDB ---
       # - AWS_REGION=us-east-1
