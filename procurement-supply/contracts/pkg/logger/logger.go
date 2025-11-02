@@ -1,61 +1,100 @@
 package logger
 
 import (
-	"fmt"
 	"os"
-	"time"
+
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 )
 
-// Logger represents a contextual logger with a specific prefix
-type Logger struct {
-	prefix string
+// New creates a new logger with the given name/component
+// This returns a sugared logger for easier use
+func New(name string) *zap.SugaredLogger {
+	config := LoadConfigFromEnv()
+	return NewWithConfig(name, config)
 }
 
-// New creates a new logger with the specified prefix (e.g., "KAFKA", "HTTP", "APP")
-func New(prefix string) *Logger {
-	return &Logger{
-		prefix: prefix,
+// NewWithConfig creates a logger with a specific configuration
+func NewWithConfig(name string, config *Config) *zap.SugaredLogger {
+	logger := NewZapLogger(config)
+	// Add a component name as a field to all logs
+	return logger.Named(name).Sugar()
+}
+
+// NewZapLogger creates the base zap.Logger with configuration
+func NewZapLogger(config *Config) *zap.Logger {
+	// Encoder configuration
+	encoderConfig := zapcore.EncoderConfig{
+		TimeKey:        "timestamp",
+		LevelKey:       "level",
+		NameKey:        "logger",
+		CallerKey:      "caller",
+		FunctionKey:    zapcore.OmitKey,
+		MessageKey:     "message",
+		StacktraceKey:  "stacktrace",
+		LineEnding:     zapcore.DefaultLineEnding,
+		EncodeLevel:    zapcore.LowercaseLevelEncoder,
+		EncodeTime:     zapcore.ISO8601TimeEncoder,
+		EncodeDuration: zapcore.SecondsDurationEncoder,
+		EncodeCaller:   zapcore.ShortCallerEncoder,
 	}
-}
 
-// formatMessage formats a log message in Gin style
-func (l *Logger) formatMessage(level Level, format string, args ...interface{}) string {
-	timestamp := time.Now().Format("2006/01/02 - 15:04:05")
-	message := fmt.Sprintf(format, args...)
-
-	if level != "" {
-		return fmt.Sprintf("[%s] %s | %s | %s", l.prefix, timestamp, level, message)
+	// Development mode: colorized, human-readable
+	if config.Environment == "development" {
+		encoderConfig.EncodeLevel = zapcore.CapitalColorLevelEncoder
+		encoderConfig.EncodeTime = zapcore.TimeEncoderOfLayout("2006/01/02 - 15:04:05")
 	}
-	return fmt.Sprintf("[%s] %s | %s", l.prefix, timestamp, message)
+
+	// Create encoder
+	var encoder zapcore.Encoder
+	if config.Encoding == "json" {
+		encoder = zapcore.NewJSONEncoder(encoderConfig)
+	} else {
+		encoder = zapcore.NewConsoleEncoder(encoderConfig)
+	}
+
+	// Core combines encoder, output, and level
+	core := zapcore.NewCore(
+		encoder,
+		zapcore.AddSync(os.Stdout),
+		config.Level,
+	)
+
+	// Logger options
+	options := []zap.Option{
+		zap.AddCaller(),
+		zap.AddCallerSkip(1), // Skip one level to show actual caller
+	}
+
+	if config.EnableStacktrace {
+		options = append(options, zap.AddStacktrace(zapcore.ErrorLevel))
+	}
+
+	return zap.New(core, options...)
 }
 
-// Debug logs a debug level message
-func (l *Logger) Debug(format string, args ...interface{}) {
-	fmt.Println(l.formatMessage(Debug, format, args...))
+// NewProduction creates a production-ready logger
+// Outputs JSON, info level, with caller information
+func NewProduction(name string) *zap.SugaredLogger {
+	config := &Config{
+		Level:            zapcore.InfoLevel,
+		Environment:      "production",
+		Encoding:         "json",
+		EnableCaller:     true,
+		EnableStacktrace: false,
+	}
+	return NewWithConfig(name, config)
 }
 
-// Info logs an info level message
-func (l *Logger) Info(format string, args ...interface{}) {
-	fmt.Println(l.formatMessage(Info, format, args...))
-}
-
-// Warn logs a warning level message
-func (l *Logger) Warn(format string, args ...interface{}) {
-	fmt.Println(l.formatMessage(Warn, format, args...))
-}
-
-// Error logs an error level message
-func (l *Logger) Error(format string, args ...interface{}) {
-	fmt.Println(l.formatMessage(Error, format, args...))
-}
-
-// Fatal logs a fatal level message and exits the program with status code 1
-func (l *Logger) Fatal(format string, args ...interface{}) {
-	fmt.Println(l.formatMessage(Fatal, format, args...))
-	os.Exit(1)
-}
-
-// Log logs a message without a level (for simple logging)
-func (l *Logger) Log(format string, args ...interface{}) {
-	fmt.Println(l.formatMessage("", format, args...))
+// NewDevelopment creates a development logger
+// Outputs colorized console, debug level, with caller information
+func NewDevelopment(name string) *zap.SugaredLogger {
+	config := &Config{
+		Level:            zapcore.DebugLevel,
+		Environment:      "development",
+		Encoding:         "console",
+		EnableCaller:     true,
+		EnableStacktrace: true,
+	}
+	return NewWithConfig(name, config)
 }
