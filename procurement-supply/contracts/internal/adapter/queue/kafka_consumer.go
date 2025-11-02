@@ -3,6 +3,7 @@ package queue
 import (
 	"context"
 	"contracts/internal/core/domain"
+	"contracts/internal/core/port/driven"
 	"contracts/pkg/logger"
 	"encoding/json"
 	"fmt"
@@ -13,15 +14,9 @@ import (
 // KafkaEventConsumer is the adapter that implements the EventConsumer driver port
 type KafkaEventConsumer struct {
 	consumer     *kafka.Consumer
-	eventService EventProcessor
+	eventService driven.EventProcessor
 	logger       *logger.Logger
 	topics       []string
-}
-
-// EventProcessor defines the interface for processing events
-// This allows the adapter to depend on an abstraction rather than concrete implementation
-type EventProcessor interface {
-	ProcessEvent(event *domain.Event[domain.Medicine]) error
 }
 
 // Config holds the Kafka consumer configuration
@@ -33,7 +28,7 @@ type Config struct {
 }
 
 // NewKafkaEventConsumer creates a new Kafka event consumer adapter
-func NewKafkaEventConsumer(config kafka.ConfigMap, topics []string, eventService EventProcessor) (*KafkaEventConsumer, error) {
+func NewKafkaEventConsumer(config kafka.ConfigMap, topics []string, eventService driven.EventProcessor) (*KafkaEventConsumer, error) {
 	consumer, err := kafka.NewConsumer(&config)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create Kafka consumer: %w", err)

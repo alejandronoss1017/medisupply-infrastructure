@@ -1,7 +1,7 @@
 package main
 
 import (
-	"contracts/internal/adapter/ethereum"
+	"contracts/internal/adapter/blockchain"
 	"contracts/internal/adapter/http"
 	"contracts/internal/adapter/storage/memory"
 	"contracts/internal/core/application"
@@ -17,13 +17,20 @@ func main() {
 	rcpURL := os.Getenv("RCP_URL")
 	smartContractAddress := os.Getenv("SMART_CONTRACT_ADDRESS")
 	privateKey := os.Getenv("PRIVATE_KEY")
-	abiPath := os.Getenv("ABI_PATH")
 
-	// Initialize Ethereum client
-	client, err := ethereum.NewSmartContractClient(rcpURL, smartContractAddress, privateKey, abiPath)
+	// Initialize blockchain writer (for state-changing operations)
+	blockchainWriter, err := blockchain.NewEthereumWriter(rcpURL, smartContractAddress, privateKey)
 	if err != nil {
-		log.Fatalf("failed to create Ethereum client: %v", err)
+		log.Fatalf("failed to create blockchain writer: %v", err)
 	}
+	defer blockchainWriter.Close()
+
+	// Initialize blockchain reader (for read-only operations)
+	blockchainReader, err := blockchain.NewEthereumReader(rcpURL, smartContractAddress)
+	if err != nil {
+		log.Fatalf("failed to create blockchain reader: %v", err)
+	}
+	defer blockchainReader.Close()
 
 	// Initialize repositories (driven adapters)
 	contractRepo := memory.NewContractRepository()
@@ -31,7 +38,7 @@ func main() {
 	slaRepo := memory.NewSLARepository()
 
 	// Initialize application services (business logic)
-	contractService := application.NewContractService(contractRepo, client)
+	contractService := application.NewContractService(contractRepo, blockchainWriter)
 	customerService := application.NewCustomerService(customerRepo)
 	slaService := application.NewSLAService(slaRepo)
 
