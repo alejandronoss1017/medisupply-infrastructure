@@ -161,7 +161,7 @@ func (er *EthereumReader) GetSLA(ctx context.Context, contractID string, slaInde
 
 	er.logger.Debugw("SLA retrieved successfully from blockchain",
 		"sla_id", sla.ID,
-		"status", sla.Status.String(),
+		"status", sla.Status,
 	)
 
 	return sla, nil
