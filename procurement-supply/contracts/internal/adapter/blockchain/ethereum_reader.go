@@ -11,6 +11,7 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
+	"go.uber.org/zap"
 )
 
 // EthereumReader is an adapter for reading blockchain state
@@ -18,12 +19,14 @@ type EthereumReader struct {
 	client          *ethclient.Client
 	contract        *binding.SLAEnforcer
 	contractAddress common.Address
+	logger          *zap.SugaredLogger
 }
 
 // NewEthereumReader creates a new EthereumReader instance
 func NewEthereumReader(
 	rpcURL string,
 	contractAddress string,
+	logger *zap.SugaredLogger,
 ) (*EthereumReader, error) {
 	// Validate contract address
 	if !common.IsHexAddress(contractAddress) {
@@ -45,15 +48,16 @@ func NewEthereumReader(
 		return nil, fmt.Errorf("failed to instantiate contract: %w", err)
 	}
 
-	//logger.Info("Ethereum reader initialized",
-	//	zap.String("rpcURL", rpcURL),
-	//	zap.String("contractAddress", addr.Hex()),
-	//)
+	logger.Infow("Ethereum reader initialized",
+		"rpc_url", rpcURL,
+		"contract_address", addr.Hex(),
+	)
 
 	return &EthereumReader{
 		client:          client,
 		contract:        contract,
 		contractAddress: addr,
+		logger:          logger,
 	}, nil
 }
 
@@ -66,7 +70,9 @@ func (er *EthereumReader) Close() {
 
 // GetContract retrieves a contract by ID with all its SLAs
 func (er *EthereumReader) GetContract(ctx context.Context, contractID string) (*domain.Contract, error) {
-	//er.logger.Debug("Getting contract", zap.String("contractID", contractID))
+	er.logger.Debugw("Getting contract from blockchain",
+		"contract_id", contractID,
+	)
 
 	result, err := er.contract.GetContract(&bind.CallOpts{Context: ctx}, contractID)
 	if err != nil {
@@ -93,31 +99,35 @@ func (er *EthereumReader) GetContract(ctx context.Context, contractID string) (*
 		SLAs:       slas,
 	}
 
-	//er.logger.Debug("Contract retrieved successfully",
-	//	zap.String("contractID", contract.ID),
-	//	zap.Int("slaCount", len(slas)),
-	//)
+	er.logger.Debugw("Contract retrieved successfully from blockchain",
+		"contract_id", contract.ID,
+		"sla_count", len(slas),
+	)
 
 	return contract, nil
 }
 
 // GetContractCount returns the total number of contracts
 func (er *EthereumReader) GetContractCount(ctx context.Context) (*big.Int, error) {
-	//er.logger.Debug("Getting contract count")
+	er.logger.Debugw("Getting contract count from blockchain")
 
 	count, err := er.contract.GetContractCount(&bind.CallOpts{Context: ctx})
 	if err != nil {
 		return nil, fmt.Errorf("failed to get contract count: %w", err)
 	}
 
-	//er.logger.Debug("Contract count retrieved", zap.String("count", count.String()))
+	er.logger.Debugw("Contract count retrieved from blockchain",
+		"count", count.String(),
+	)
 
 	return count, nil
 }
 
 // GetContractByIndex retrieves a contract by its index
 func (er *EthereumReader) GetContractByIndex(ctx context.Context, index uint64) (*domain.Contract, error) {
-	//er.logger.Debug("Getting contract by index", zap.Uint64("index", index))
+	er.logger.Debugw("Getting contract by index from blockchain",
+		"index", index,
+	)
 
 	result, err := er.contract.Contracts(&bind.CallOpts{Context: ctx}, big.NewInt(int64(index)))
 	if err != nil {
@@ -130,10 +140,10 @@ func (er *EthereumReader) GetContractByIndex(ctx context.Context, index uint64) 
 
 // GetSLA retrieves a specific SLA from a contract
 func (er *EthereumReader) GetSLA(ctx context.Context, contractID string, slaIndex uint64) (*domain.SLA, error) {
-	//er.logger.Debug("Getting SLA",
-	//	zap.String("contractID", contractID),
-	//	zap.Uint64("slaIndex", slaIndex),
-	//)
+	er.logger.Debugw("Getting SLA from blockchain",
+		"contract_id", contractID,
+		"sla_index", slaIndex,
+	)
 
 	result, err := er.contract.GetSLA(&bind.CallOpts{Context: ctx}, contractID, big.NewInt(int64(slaIndex)))
 	if err != nil {
@@ -149,17 +159,19 @@ func (er *EthereumReader) GetSLA(ctx context.Context, contractID string, slaInde
 		Status:      domain.SLAStatus(result.Status),
 	}
 
-	//er.logger.Debug("SLA retrieved successfully",
-	//	zap.String("slaID", sla.ID),
-	//	zap.String("status", sla.Status.String()),
-	//)
+	er.logger.Debugw("SLA retrieved successfully from blockchain",
+		"sla_id", sla.ID,
+		"status", sla.Status.String(),
+	)
 
 	return sla, nil
 }
 
 // GetSLAs retrieves all SLAs for a contract
 func (er *EthereumReader) GetSLAs(ctx context.Context, contractID string) ([]*domain.SLA, error) {
-	//er.logger.Debug("Getting all SLAs", zap.String("contractID", contractID))
+	er.logger.Debugw("Getting all SLAs from blockchain",
+		"contract_id", contractID,
+	)
 
 	results, err := er.contract.GetSLAs(&bind.CallOpts{Context: ctx}, contractID)
 	if err != nil {
@@ -178,38 +190,42 @@ func (er *EthereumReader) GetSLAs(ctx context.Context, contractID string) ([]*do
 		}
 	}
 
-	//er.logger.Debug("SLAs retrieved successfully",
-	//	zap.String("contractID", contractID),
-	//	zap.Int("count", len(slas)),
-	//)
+	er.logger.Debugw("SLAs retrieved successfully from blockchain",
+		"contract_id", contractID,
+		"count", len(slas),
+	)
 
 	return slas, nil
 }
 
 // GetBlockNumber returns the current block number
 func (er *EthereumReader) GetBlockNumber(ctx context.Context) (uint64, error) {
-	//er.logger.Debug("Getting current block number")
+	er.logger.Debugw("Getting current block number from blockchain")
 
 	blockNumber, err := er.client.BlockNumber(ctx)
 	if err != nil {
 		return 0, fmt.Errorf("failed to get block number: %w", err)
 	}
 
-	//er.logger.Debug("Block number retrieved", zap.Uint64("blockNumber", blockNumber))
+	er.logger.Debugw("Block number retrieved from blockchain",
+		"block_number", blockNumber,
+	)
 
 	return blockNumber, nil
 }
 
 // GetChainID returns the chain ID
 func (er *EthereumReader) GetChainID(ctx context.Context) (*big.Int, error) {
-	//er.logger.Debug("Getting chain ID")
+	er.logger.Debugw("Getting chain ID from blockchain")
 
 	chainID, err := er.client.ChainID(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get chain ID: %w", err)
 	}
 
-	//er.logger.Debug("Chain ID retrieved", zap.String("chainID", chainID.String()))
+	er.logger.Debugw("Chain ID retrieved from blockchain",
+		"chain_id", chainID.String(),
+	)
 
 	return chainID, nil
 }

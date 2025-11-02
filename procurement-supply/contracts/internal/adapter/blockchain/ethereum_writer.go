@@ -11,6 +11,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
+	"go.uber.org/zap"
 
 	"contracts/internal/adapter/blockchain/binding"
 )
@@ -23,7 +24,7 @@ type EthereumWriter struct {
 	privateKey      *ecdsa.PrivateKey
 	publicAddress   common.Address
 	chainID         *big.Int
-	//logger          *zap.Logger
+	logger          *zap.SugaredLogger
 }
 
 // NewEthereumWriter creates a new EthereumWriter instance
@@ -31,7 +32,7 @@ func NewEthereumWriter(
 	rpcURL string,
 	contractAddress string,
 	privateKeyHex string,
-	// logger *zap.Logger,
+	logger *zap.SugaredLogger,
 ) (*EthereumWriter, error) {
 	// Validate contract address
 	if !common.IsHexAddress(contractAddress) {
@@ -74,12 +75,12 @@ func NewEthereumWriter(
 		return nil, fmt.Errorf("failed to instantiate contract: %w", err)
 	}
 
-	//logger.Info("Ethereum writer initialized",
-	//	zap.String("rpcURL", rpcURL),
-	//	zap.String("contractAddress", addr.Hex()),
-	//	zap.String("publicAddress", publicAddress.Hex()),
-	//	zap.String("chainID", chainID.String()),
-	//)
+	logger.Infow("Ethereum writer initialized",
+		"rpc_url", rpcURL,
+		"contract_address", addr.Hex(),
+		"public_address", publicAddress.Hex(),
+		"chain_id", chainID.String(),
+	)
 
 	return &EthereumWriter{
 		client:          client,
@@ -88,7 +89,7 @@ func NewEthereumWriter(
 		privateKey:      privateKey,
 		publicAddress:   publicAddress,
 		chainID:         chainID,
-		//logger:          logger,
+		logger:          logger,
 	}, nil
 }
 
@@ -111,10 +112,10 @@ func (ew *EthereumWriter) GetBalance(ctx context.Context) (*big.Int, error) {
 		return nil, fmt.Errorf("failed to get balance: %w", err)
 	}
 
-	//ew.logger.Debug("Balance retrieved",
-	//	zap.String("address", ew.publicAddress.Hex()),
-	//	zap.String("balance", balance.String()),
-	//)
+	ew.logger.Debugw("Balance retrieved",
+		"address", ew.publicAddress.Hex(),
+		"balance", balance.String(),
+	)
 
 	return balance, nil
 }
@@ -147,10 +148,11 @@ func (ew *EthereumWriter) createTransactor(ctx context.Context) (*bind.TransactO
 
 // AddContract adds a new contract to the blockchain
 func (ew *EthereumWriter) AddContract(ctx context.Context, contractID, path, customerID string) (*driven.TransactionReceipt, error) {
-	//ew.logger.Info("Adding contract",
-	//	zap.String("contractID", contractID),
-	//	zap.String("customerID", customerID),
-	//)
+	ew.logger.Infow("Adding contract to blockchain",
+		"contract_id", contractID,
+		"customer_id", customerID,
+		"path", path,
+	)
 
 	auth, err := ew.createTransactor(ctx)
 	if err != nil {
@@ -162,9 +164,9 @@ func (ew *EthereumWriter) AddContract(ctx context.Context, contractID, path, cus
 		return nil, fmt.Errorf("failed to send transaction: %w", err)
 	}
 
-	//ew.logger.Info("Transaction sent",
-	//	zap.String("txHash", tx.Hash().Hex()),
-	//)
+	ew.logger.Infow("Transaction sent to blockchain",
+		"tx_hash", tx.Hash().Hex(),
+	)
 
 	// Wait for transaction receipt
 	receipt, err := bind.WaitMined(ctx, ew.client, tx)
@@ -179,29 +181,33 @@ func (ew *EthereumWriter) AddContract(ctx context.Context, contractID, path, cus
 		GasUsed:     receipt.GasUsed,
 	}
 
-	//if receipt.Status == 1 {
-	//	ew.logger.Info("Contract added successfully",
-	//		zap.String("contractID", contractID),
-	//		zap.String("txHash", txReceipt.TxHash),
-	//		zap.Uint64("blockNumber", txReceipt.BlockNumber),
-	//	)
-	//} else {
-	//	ew.logger.Error("Contract addition failed",
-	//		zap.String("contractID", contractID),
-	//		zap.String("txHash", txReceipt.TxHash),
-	//	)
-	//}
+	if receipt.Status == 1 {
+		ew.logger.Infow("Contract added successfully to blockchain",
+			"contract_id", contractID,
+			"tx_hash", txReceipt.TxHash,
+			"block_number", txReceipt.BlockNumber,
+			"gas_used", txReceipt.GasUsed,
+		)
+	} else {
+		ew.logger.Errorw("Contract addition failed on blockchain",
+			"contract_id", contractID,
+			"tx_hash", txReceipt.TxHash,
+			"status", receipt.Status,
+		)
+	}
 
 	return txReceipt, nil
 }
 
 // AddSLA adds a new SLA to an existing contract
 func (ew *EthereumWriter) AddSLA(ctx context.Context, contractID, slaID, name, description string, target *big.Int, comparator uint8) (*driven.TransactionReceipt, error) {
-	//ew.logger.Info("Adding SLA",
-	//	zap.String("contractID", contractID),
-	//	zap.String("slaID", slaID),
-	//	zap.String("name", name),
-	//)
+	ew.logger.Infow("Adding SLA to contract",
+		"contract_id", contractID,
+		"sla_id", slaID,
+		"name", name,
+		"target", target.String(),
+		"comparator", comparator,
+	)
 
 	auth, err := ew.createTransactor(ctx)
 	if err != nil {
@@ -213,9 +219,9 @@ func (ew *EthereumWriter) AddSLA(ctx context.Context, contractID, slaID, name, d
 		return nil, fmt.Errorf("failed to send transaction: %w", err)
 	}
 
-	//ew.logger.Info("Transaction sent",
-	//	zap.String("txHash", tx.Hash().Hex()),
-	//)
+	ew.logger.Infow("Transaction sent to blockchain",
+		"tx_hash", tx.Hash().Hex(),
+	)
 
 	// Wait for transaction receipt
 	receipt, err := bind.WaitMined(ctx, ew.client, tx)
@@ -230,29 +236,31 @@ func (ew *EthereumWriter) AddSLA(ctx context.Context, contractID, slaID, name, d
 		GasUsed:     receipt.GasUsed,
 	}
 
-	//if receipt.Status == 1 {
-	//	ew.logger.Info("SLA added successfully",
-	//		zap.String("slaID", slaID),
-	//		zap.String("txHash", txReceipt.TxHash),
-	//		zap.Uint64("blockNumber", txReceipt.BlockNumber),
-	//	)
-	//} else {
-	//	ew.logger.Error("SLA addition failed",
-	//		zap.String("slaID", slaID),
-	//		zap.String("txHash", txReceipt.TxHash),
-	//	)
-	//}
+	if receipt.Status == 1 {
+		ew.logger.Infow("SLA added successfully to blockchain",
+			"sla_id", slaID,
+			"tx_hash", txReceipt.TxHash,
+			"block_number", txReceipt.BlockNumber,
+			"gas_used", txReceipt.GasUsed,
+		)
+	} else {
+		ew.logger.Errorw("SLA addition failed on blockchain",
+			"sla_id", slaID,
+			"tx_hash", txReceipt.TxHash,
+			"status", receipt.Status,
+		)
+	}
 
 	return txReceipt, nil
 }
 
 // SetSLAStatus updates the status of an SLA
 func (ew *EthereumWriter) SetSLAStatus(ctx context.Context, contractID string, slaIndex uint64, status uint8) (*driven.TransactionReceipt, error) {
-	//ew.logger.Info("Setting SLA status",
-	//	zap.String("contractID", contractID),
-	//	zap.Uint64("slaIndex", slaIndex),
-	//	zap.Uint8("status", status),
-	//)
+	ew.logger.Infow("Setting SLA status",
+		"contract_id", contractID,
+		"sla_index", slaIndex,
+		"status", status,
+	)
 
 	auth, err := ew.createTransactor(ctx)
 	if err != nil {
@@ -264,9 +272,9 @@ func (ew *EthereumWriter) SetSLAStatus(ctx context.Context, contractID string, s
 		return nil, fmt.Errorf("failed to send transaction: %w", err)
 	}
 
-	//ew.logger.Info("Transaction sent",
-	//	zap.String("txHash", tx.Hash().Hex()),
-	//)
+	ew.logger.Infow("Transaction sent to blockchain",
+		"tx_hash", tx.Hash().Hex(),
+	)
 
 	// Wait for transaction receipt
 	receipt, err := bind.WaitMined(ctx, ew.client, tx)
@@ -281,30 +289,33 @@ func (ew *EthereumWriter) SetSLAStatus(ctx context.Context, contractID string, s
 		GasUsed:     receipt.GasUsed,
 	}
 
-	//if receipt.Status == 1 {
-	//	ew.logger.Info("SLA status updated successfully",
-	//		zap.String("contractID", contractID),
-	//		zap.Uint64("slaIndex", slaIndex),
-	//		zap.String("txHash", txReceipt.TxHash),
-	//	)
-	//} else {
-	//	ew.logger.Error("SLA status update failed",
-	//		zap.String("contractID", contractID),
-	//		zap.Uint64("slaIndex", slaIndex),
-	//		zap.String("txHash", txReceipt.TxHash),
-	//	)
-	//}
+	if receipt.Status == 1 {
+		ew.logger.Infow("SLA status updated successfully on blockchain",
+			"contract_id", contractID,
+			"sla_index", slaIndex,
+			"tx_hash", txReceipt.TxHash,
+			"block_number", txReceipt.BlockNumber,
+			"gas_used", txReceipt.GasUsed,
+		)
+	} else {
+		ew.logger.Errorw("SLA status update failed on blockchain",
+			"contract_id", contractID,
+			"sla_index", slaIndex,
+			"tx_hash", txReceipt.TxHash,
+			"status", receipt.Status,
+		)
+	}
 
 	return txReceipt, nil
 }
 
 // CheckSLA checks an SLA against an actual value
 func (ew *EthereumWriter) CheckSLA(ctx context.Context, contractID string, slaIndex uint64, actualValue *big.Int) (*driven.TransactionReceipt, error) {
-	//ew.logger.Info("Checking SLA",
-	//	zap.String("contractID", contractID),
-	//	zap.Uint64("slaIndex", slaIndex),
-	//	zap.String("actualValue", actualValue.String()),
-	//)
+	ew.logger.Infow("Checking SLA",
+		"contract_id", contractID,
+		"sla_index", slaIndex,
+		"actual_value", actualValue.String(),
+	)
 
 	auth, err := ew.createTransactor(ctx)
 	if err != nil {
@@ -316,9 +327,9 @@ func (ew *EthereumWriter) CheckSLA(ctx context.Context, contractID string, slaIn
 		return nil, fmt.Errorf("failed to send transaction: %w", err)
 	}
 
-	//ew.logger.Info("Transaction sent",
-	//	zap.String("txHash", tx.Hash().Hex()),
-	//)
+	ew.logger.Infow("Transaction sent to blockchain",
+		"tx_hash", tx.Hash().Hex(),
+	)
 
 	// Wait for transaction receipt
 	receipt, err := bind.WaitMined(ctx, ew.client, tx)
@@ -333,19 +344,22 @@ func (ew *EthereumWriter) CheckSLA(ctx context.Context, contractID string, slaIn
 		GasUsed:     receipt.GasUsed,
 	}
 
-	//if receipt.Status == 1 {
-	//	ew.logger.Info("SLA checked successfully",
-	//		zap.String("contractID", contractID),
-	//		zap.Uint64("slaIndex", slaIndex),
-	//		zap.String("txHash", txReceipt.TxHash),
-	//	)
-	//} else {
-	//	ew.logger.Error("SLA check failed",
-	//		zap.String("contractID", contractID),
-	//		zap.Uint64("slaIndex", slaIndex),
-	//		zap.String("txHash", txReceipt.TxHash),
-	//	)
-	//}
+	if receipt.Status == 1 {
+		ew.logger.Infow("SLA checked successfully on blockchain",
+			"contract_id", contractID,
+			"sla_index", slaIndex,
+			"tx_hash", txReceipt.TxHash,
+			"block_number", txReceipt.BlockNumber,
+			"gas_used", txReceipt.GasUsed,
+		)
+	} else {
+		ew.logger.Errorw("SLA check failed on blockchain",
+			"contract_id", contractID,
+			"sla_index", slaIndex,
+			"tx_hash", txReceipt.TxHash,
+			"status", receipt.Status,
+		)
+	}
 
 	return txReceipt, nil
 }

@@ -15,9 +15,13 @@ import (
 
 func main() {
 	// Initialize logger
-	log := logger.New("APP")
+	log := logger.New("CONSUMER")
+	defer func() {
+		// Flush logger on exit
+		_ = log.Sync()
+	}()
 
-	log.Info("Starting Contracts Service...")
+	log.Info("Starting Contracts Consumer Service...")
 
 	kafkaHost := getEnv("KAFKA_HOST", "localhost:9092")
 	kafkaGroupId := getEnv("KAFKA_GROUP_ID", "contracts-service")
@@ -31,10 +35,13 @@ func main() {
 		"enable.auto.commit": false, // Manual commit for better control
 	}
 
-	log.Info("Configuration loaded:")
-	log.Info("  Kafka host: %s", kafkaHost)
-	log.Info("  Group ID: %s", kafkaGroupId)
-	log.Info("  Topics: %v", kafkaTopics)
+	log.Infow("Kafka configuration loaded",
+		"kafka_host", kafkaHost,
+		"group_id", kafkaGroupId,
+		"topics", kafkaTopics,
+		"auto_offset_reset", "earliest",
+		"auto_commit", false,
+	)
 
 	// Create application service (business logic layer)
 	log.Info("Initializing application service...")
@@ -44,7 +51,9 @@ func main() {
 	log.Info("Initializing Kafka consumer...")
 	consumer, err := queue.NewKafkaEventConsumer(config, []string{kafkaTopics}, eventService)
 	if err != nil {
-		log.Fatal("Failed to create Kafka consumer: %v", err)
+		log.Fatalw("Failed to create Kafka consumer",
+			"error", err,
+		)
 	}
 
 	// Setup graceful shutdown
@@ -70,16 +79,20 @@ func main() {
 		log.Info("Shutdown signal received, stopping service...")
 		cancel()
 	case err = <-errChan:
-		log.Error("Consumer error: %v", err)
+		log.Errorw("Consumer error",
+			"error", err,
+		)
 		cancel()
 	}
 
 	// Stop consumer gracefully
 	if err = consumer.Stop(); err != nil {
-		log.Error("Error stopping consumer: %v", err)
+		log.Errorw("Error stopping consumer",
+			"error", err,
+		)
 	}
 
-	log.Info("Contracts Service stopped successfully")
+	log.Info("Contracts Consumer Service stopped successfully")
 }
 
 // getEnv gets an environment variable or returns a default value

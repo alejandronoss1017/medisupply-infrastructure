@@ -5,30 +5,47 @@ import (
 	"contracts/internal/adapter/http"
 	"contracts/internal/adapter/storage/memory"
 	"contracts/internal/core/application"
-	"log"
+	"contracts/pkg/logger"
 	"os"
 
 	"github.com/gin-gonic/gin"
 )
 
 func main() {
+	// Initialize logger
+	log := logger.New("WEB-API")
+	defer func() {
+		// Flush logger on exit
+		_ = log.Sync()
+	}()
+
+	log.Info("Starting Contracts Web API Service...")
 
 	// Load environment variables
 	rcpURL := os.Getenv("RCP_URL")
 	smartContractAddress := os.Getenv("SMART_CONTRACT_ADDRESS")
 	privateKey := os.Getenv("PRIVATE_KEY")
 
+	log.Infow("Configuration loaded",
+		"rcp_url", rcpURL,
+		"contract_address", smartContractAddress,
+	)
+
 	// Initialize blockchain writer (for state-changing operations)
-	blockchainWriter, err := blockchain.NewEthereumWriter(rcpURL, smartContractAddress, privateKey)
+	blockchainWriter, err := blockchain.NewEthereumWriter(rcpURL, smartContractAddress, privateKey, log)
 	if err != nil {
-		log.Fatalf("failed to create blockchain writer: %v", err)
+		log.Fatalw("Failed to create blockchain writer",
+			"error", err,
+		)
 	}
 	defer blockchainWriter.Close()
 
 	// Initialize blockchain reader (for read-only operations)
-	blockchainReader, err := blockchain.NewEthereumReader(rcpURL, smartContractAddress)
+	blockchainReader, err := blockchain.NewEthereumReader(rcpURL, smartContractAddress, log)
 	if err != nil {
-		log.Fatalf("failed to create blockchain reader: %v", err)
+		log.Fatalw("Failed to create blockchain reader",
+			"error", err,
+		)
 	}
 	defer blockchainReader.Close()
 
@@ -47,8 +64,13 @@ func main() {
 	customerHandler := http.NewCustomerHandler(customerService)
 	slaHandler := http.NewSLAHandler(slaService)
 
-	// Setup router
-	router := gin.Default()
+	// Setup router with custom middleware
+	router := gin.New()
+
+	// Add Zap logger middleware for structured request logging
+	router.Use(logger.GinLogger(log))
+	// Add recovery middleware with Zap logging
+	router.Use(logger.GinRecovery(log))
 
 	// Health check
 	router.GET("/ping", http.PongHandler)
@@ -84,8 +106,13 @@ func main() {
 	}
 
 	// Start server
-	log.Println("Starting server on :8080...")
+	log.Infow("Starting HTTP server",
+		"port", "8080",
+		"address", ":8080",
+	)
 	if err := router.Run(); err != nil {
-		log.Fatalf("failed to start server: %v", err)
+		log.Fatalw("Failed to start server",
+			"error", err,
+		)
 	}
 }

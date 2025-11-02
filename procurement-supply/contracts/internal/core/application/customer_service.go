@@ -8,12 +8,14 @@ import (
 	"fmt"
 	"strconv"
 	"time"
+
+	"go.uber.org/zap"
 )
 
 // CustomerService handles business logic for customer management
 type CustomerService struct {
 	repo   driven.Repository[string, domain.Customer]
-	logger *logger.Logger
+	logger *zap.SugaredLogger
 	idSeq  int64
 }
 
@@ -47,7 +49,10 @@ func (s *CustomerService) CreateCustomer(customer domain.Customer) (*domain.Cust
 		return nil, fmt.Errorf("failed to create customer: %w", err)
 	}
 
-	s.logger.Info("Customer %s created successfully", customer.ID)
+	s.logger.Infow("Customer created successfully",
+		"customer_id", customer.ID,
+		"name", customer.Name,
+	)
 	return &customer, nil
 }
 
@@ -81,7 +86,9 @@ func (s *CustomerService) UpdateCustomer(customer domain.Customer) (*domain.Cust
 		return nil, fmt.Errorf("failed to update customer: %w", err)
 	}
 
-	s.logger.Info("Customer %s updated successfully", customer.ID)
+	s.logger.Infow("Customer updated successfully",
+		"customer_id", customer.ID,
+	)
 	return &customer, nil
 }
 
@@ -97,6 +104,8 @@ func (s *CustomerService) DeleteCustomer(id string) error {
 		return fmt.Errorf("failed to delete customer: %w", err)
 	}
 
-	s.logger.Info("Customer %s deleted successfully", id)
+	s.logger.Infow("Customer deleted successfully",
+		"customer_id", id,
+	)
 	return nil
 }

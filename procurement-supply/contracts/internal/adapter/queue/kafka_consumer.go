@@ -9,13 +9,14 @@ import (
 	"fmt"
 
 	"github.com/confluentinc/confluent-kafka-go/kafka"
+	"go.uber.org/zap"
 )
 
 // KafkaEventConsumer is the adapter that implements the EventConsumer driver port
 type KafkaEventConsumer struct {
 	consumer     *kafka.Consumer
 	eventService driven.EventProcessor
-	logger       *logger.Logger
+	logger       *zap.SugaredLogger
 	topics       []string
 }
 
@@ -49,7 +50,9 @@ func (k *KafkaEventConsumer) Start(ctx context.Context) error {
 		return fmt.Errorf("failed to subscribe to topics: %w", err)
 	}
 
-	k.logger.Info("Subscribed to topics: %v", k.topics)
+	k.logger.Infow("Subscribed to Kafka topics",
+		"topics", k.topics,
+	)
 	k.logger.Info("Started consuming messages. Waiting for events...")
 
 	// Message consumption loop
@@ -60,7 +63,9 @@ func (k *KafkaEventConsumer) Start(ctx context.Context) error {
 			return ctx.Err()
 		default:
 			if err := k.pollAndProcess(ctx); err != nil {
-				k.logger.Error("Error in poll and process: %v", err)
+				k.logger.Errorw("Error in poll and process",
+					"error", err,
+				)
 				// Continue processing other messages
 			}
 		}
@@ -79,7 +84,10 @@ func (k *KafkaEventConsumer) pollAndProcess(ctx context.Context) error {
 		return k.handleMessage(e)
 
 	case kafka.Error:
-		k.logger.Error("Kafka error: %v (code: %v)", e, e.Code())
+		k.logger.Errorw("Kafka error",
+			"error", e,
+			"error_code", e.Code(),
+		)
 
 		// Check if it's a fatal error
 		if e.Code() == kafka.ErrAllBrokersDown {
@@ -99,24 +107,36 @@ func (k *KafkaEventConsumer) pollAndProcess(ctx context.Context) error {
 
 // handleMessage processes a single Kafka message
 func (k *KafkaEventConsumer) handleMessage(msg *kafka.Message) error {
-	k.logger.Debug("Received message on %s [partition %d] at offset %d",
-		*msg.TopicPartition.Topic,
-		msg.TopicPartition.Partition,
-		msg.TopicPartition.Offset)
+	k.logger.Debugw("Received Kafka message",
+		"topic", *msg.TopicPartition.Topic,
+		"partition", msg.TopicPartition.Partition,
+		"offset", msg.TopicPartition.Offset,
+	)
 
 	// Parse the message
 	var event domain.Event[domain.Medicine]
 	if err := json.Unmarshal(msg.Value, &event); err != nil {
-		k.logger.Error("Failed to unmarshal message: %v", err)
+		k.logger.Errorw("Failed to unmarshal message",
+			"error", err,
+			"topic", *msg.TopicPartition.Topic,
+		)
 		return fmt.Errorf("failed to unmarshal message: %w", err)
 	}
 
-	k.logger.Info("Processing event: type=%s, medicine_id=%s, medicine_name=%s",
-		event.EventType, event.Data.ID, event.Data.Name)
+	k.logger.Infow("Processing event",
+		"event_type", event.EventType,
+		"medicine_id", event.Data.ID,
+		"medicine_name", event.Data.Name,
+		"event_id", event.ID,
+	)
 
 	// Process the event through the application service
 	if err := k.eventService.ProcessEvent(&event); err != nil {
-		k.logger.Error("Error processing event: %v", err)
+		k.logger.Errorw("Error processing event",
+			"error", err,
+			"event_type", event.EventType,
+			"event_id", event.ID,
+		)
 		// Depending on your error handling strategy, you might want to:
 		// - Return the error to stop processing
 		// - Continue processing other messages
@@ -126,12 +146,16 @@ func (k *KafkaEventConsumer) handleMessage(msg *kafka.Message) error {
 
 	// Commit offset after successful processing
 	if _, err := k.consumer.CommitMessage(msg); err != nil {
-		k.logger.Error("Error committing offset: %v", err)
+		k.logger.Errorw("Error committing offset",
+			"error", err,
+			"offset", msg.TopicPartition.Offset,
+		)
 		return fmt.Errorf("failed to commit offset: %w", err)
 	}
 
-	k.logger.Debug("Successfully processed and committed message at offset %d",
-		msg.TopicPartition.Offset)
+	k.logger.Debugw("Successfully processed and committed message",
+		"offset", msg.TopicPartition.Offset,
+	)
 
 	return nil
 }
@@ -141,7 +165,9 @@ func (k *KafkaEventConsumer) Stop() error {
 	k.logger.Info("Closing Kafka consumer...")
 
 	if err := k.consumer.Close(); err != nil {
-		k.logger.Error("Error closing consumer: %v", err)
+		k.logger.Errorw("Error closing consumer",
+			"error", err,
+		)
 		return fmt.Errorf("failed to close consumer: %w", err)
 	}
 

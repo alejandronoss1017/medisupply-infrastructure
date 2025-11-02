@@ -8,12 +8,14 @@ import (
 	"fmt"
 	"strconv"
 	"time"
+
+	"go.uber.org/zap"
 )
 
 // SLAService handles business logic for SLA management
 type SLAService struct {
 	repo   driven.Repository[string, domain.SLA]
-	logger *logger.Logger
+	logger *zap.SugaredLogger
 	idSeq  int64
 }
 
@@ -47,7 +49,10 @@ func (s *SLAService) CreateSLA(sla domain.SLA) (*domain.SLA, error) {
 		return nil, fmt.Errorf("failed to create sla: %w", err)
 	}
 
-	s.logger.Info("SLA %s created successfully", sla.ID)
+	s.logger.Infow("SLA created successfully",
+		"sla_id", sla.ID,
+		"name", sla.Name,
+	)
 	return &sla, nil
 }
 
@@ -81,7 +86,9 @@ func (s *SLAService) UpdateSLA(sla domain.SLA) (*domain.SLA, error) {
 		return nil, fmt.Errorf("failed to update sla: %w", err)
 	}
 
-	s.logger.Info("SLA %s updated successfully", sla.ID)
+	s.logger.Infow("SLA updated successfully",
+		"sla_id", sla.ID,
+	)
 	return &sla, nil
 }
 
@@ -97,6 +104,8 @@ func (s *SLAService) DeleteSLA(id string) error {
 		return fmt.Errorf("failed to delete sla: %w", err)
 	}
 
-	s.logger.Info("SLA %s deleted successfully", id)
+	s.logger.Infow("SLA deleted successfully",
+		"sla_id", id,
+	)
 	return nil
 }

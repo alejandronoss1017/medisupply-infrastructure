@@ -4,11 +4,13 @@ import (
 	"contracts/internal/core/domain"
 	"contracts/pkg/logger"
 	"fmt"
+
+	"go.uber.org/zap"
 )
 
 // MedicineEventService handles the business logic for medicine events
 type MedicineEventService struct {
-	logger *logger.Logger
+	logger *zap.SugaredLogger
 }
 
 // NewMedicineEventService creates a new medicine event service
@@ -20,30 +22,41 @@ func NewMedicineEventService() *MedicineEventService {
 
 // HandleMedicineUpdated processes medicine update events
 func (s *MedicineEventService) HandleMedicineUpdated(event *domain.Event[domain.Medicine]) error {
-	s.logger.Info("Processing UPDATED event for medicine: %s (ID: %s)",
-		event.Data.Name, event.Data.ID)
+	s.logger.Infow("Processing UPDATED event for medicine",
+		"medicine_id", event.Data.ID,
+		"medicine_name", event.Data.Name)
 
 	// Update the existing contract with new medicine data
-	s.logger.Info("Finding existing contracts with medicine ID: %s", event.Data.ID)
+	s.logger.Infow("Finding existing contracts with medicine",
+		"medicine_id", event.Data.ID,
+	)
 
-	s.logger.Info("Successfully updated contracts for medicine: %s", event.Data)
+	s.logger.Infow("Successfully updated contracts for medicine",
+		"medicine_id", event.Data.ID,
+	)
 	return nil
 }
 
 // HandleMedicineDeleted processes medicine deletion events
 func (s *MedicineEventService) HandleMedicineDeleted(event *domain.Event[domain.Medicine]) error {
-	s.logger.Info("Processing DELETED event for medicine ID: %s", event.Data.ID)
+	s.logger.Infow("Processing DELETED event for medicine",
+		"medicine_id", event.Data.ID,
+	)
 
-	// Find existing contract for the medicine
-	s.logger.Info("Finding existing contracts with medicine ID: %s", event.Data.ID)
+	// Find an existing contract for the medicine
+	s.logger.Infow("Finding existing contracts with medicine",
+		"medicine_id", event.Data.ID,
+	)
 
 	// Delete medicines related to the contract
-	s.logger.Info("Deleting medicines related to contract: %s", event.Data.ID)
+	s.logger.Infow("Deleting medicines related to contract",
+		"medicine_id", event.Data.ID,
+	)
 
 	return nil
 }
 
-// ProcessEvent routes events to the appropriate handler based on event type
+// ProcessEvent routes events to the appropriate handler based on an event type
 func (s *MedicineEventService) ProcessEvent(event *domain.Event[domain.Medicine]) error {
 	switch event.EventType {
 	case domain.MedicineUpdatedEvent:
@@ -51,7 +64,8 @@ func (s *MedicineEventService) ProcessEvent(event *domain.Event[domain.Medicine]
 	case domain.MedicineDeletedEvent:
 		return s.HandleMedicineDeleted(event)
 	default:
-		s.logger.Warn("Unknown event type: %s", event.EventType)
+		s.logger.Warnw("Unknown event type",
+			"event_type", event.EventType)
 		return fmt.Errorf("unknown event type: %s", event.EventType)
 	}
 }

@@ -9,13 +9,15 @@ import (
 	"fmt"
 	"strconv"
 	"time"
+
+	"go.uber.org/zap"
 )
 
 // ContractService handles business logic for contract management
 type ContractService struct {
 	repository       driven.Repository[string, domain.Contract]
 	blockchainWriter driven.BlockchainWriter
-	logger           *logger.Logger
+	logger           *zap.SugaredLogger
 	idSeq            int64
 }
 
@@ -40,7 +42,7 @@ func (s *ContractService) CreateContract(ctx context.Context, contract domain.Co
 		contract.ID = strconv.FormatInt(s.idSeq, 10)
 	}
 
-	// Check if contract already exists
+	// Check if the contract already exists
 	if s.repository.Exists(contract.ID) {
 		return nil, fmt.Errorf("contract with id %s already exists", contract.ID)
 	}
@@ -51,7 +53,11 @@ func (s *ContractService) CreateContract(ctx context.Context, contract domain.Co
 	}
 
 	// Register on blockchain
-	s.logger.Info("Registering contract %s on blockchain", contract.ID)
+	s.logger.Infow("Registering contract on blockchain",
+		"contract_id", contract.ID,
+		"customer_id", contract.CustomerID,
+		"path", contract.Path,
+	)
 	receipt, err := s.blockchainWriter.AddContract(ctx, contract.ID, contract.Path, contract.CustomerID)
 	if err != nil {
 		// Rollback repository changes
@@ -66,8 +72,12 @@ func (s *ContractService) CreateContract(ctx context.Context, contract domain.Co
 		return nil, fmt.Errorf("blockchain transaction failed (status: %d, tx: %s)", receipt.Status, receipt.TxHash)
 	}
 
-	s.logger.Info("Contract %s successfully registered on blockchain (tx: %s, block: %d)",
-		contract.ID, receipt.TxHash, receipt.BlockNumber)
+	s.logger.Infow("Contract successfully registered on blockchain",
+		"contract_id", contract.ID,
+		"tx_hash", receipt.TxHash,
+		"block_number", receipt.BlockNumber,
+		"gas_used", receipt.GasUsed,
+	)
 
 	return &contract, nil
 }
@@ -102,7 +112,9 @@ func (s *ContractService) UpdateContract(contract domain.Contract) (*domain.Cont
 		return nil, fmt.Errorf("failed to update contract: %w", err)
 	}
 
-	s.logger.Info("Contract %s updated successfully", contract.ID)
+	s.logger.Infow("Contract updated successfully",
+		"contract_id", contract.ID,
+	)
 	return &contract, nil
 }
 
@@ -113,11 +125,13 @@ func (s *ContractService) DeleteContract(id string) error {
 		return fmt.Errorf("contract with id %s not found", id)
 	}
 
-	// Delete from repository
+	// Delete it from the repository
 	if err := s.repository.Delete(id); err != nil {
 		return fmt.Errorf("failed to delete contract: %w", err)
 	}
 
-	s.logger.Info("Contract %s deleted successfully", id)
+	s.logger.Infow("Contract deleted successfully",
+		"contract_id", id,
+	)
 	return nil
 }
