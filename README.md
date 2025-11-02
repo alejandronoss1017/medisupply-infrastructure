@@ -74,12 +74,12 @@ The system consists of 7 interconnected microservices:
 You can verify that all services are running by checking their health endpoints:
 ```bash
 curl http://localhost:3001/health  # ruta-ms
-curl http://localhost:3002/health  # centro-distribucion-ms
-curl http://localhost:3003/health  # lote-ms
+curl http://localhost:3002/health  # distribution-centers
+curl http://localhost:3003/health  # batches
 curl http://localhost:3004/health  # vehiculo-ms
-curl http://localhost:3005/health  # normativa-ms
+curl http://localhost:3005/health  # normatives
 curl http://localhost:3006/health  # alerta-ms
-curl http://localhost:3007/health  # venta-ms
+curl http://localhost:3007/health  # sales
 ```
 
 #### Running the Integrated Tests
