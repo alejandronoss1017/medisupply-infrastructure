@@ -55,9 +55,9 @@ func main() {
 	slaRepo := memory.NewSLARepository()
 
 	// Initialize application services (business logic)
-	contractService := application.NewContractService(contractRepo, blockchainWriter)
+	contractService := application.NewContractService(contractRepo, blockchainWriter, blockchainReader)
 	customerService := application.NewCustomerService(customerRepo)
-	slaService := application.NewSLAService(slaRepo)
+	slaService := application.NewSLAService(slaRepo, blockchainWriter, blockchainReader)
 
 	// Initialize HTTP handlers (driver adapters)
 	contractHandler := http.NewContractHandler(contractService)
@@ -83,6 +83,8 @@ func main() {
 		contractsRoutes.POST("", contractHandler.PostContract)
 		contractsRoutes.PUT("/:id", contractHandler.PutContract)
 		contractsRoutes.DELETE("/:id", contractHandler.DeleteContract)
+		contractsRoutes.GET("/:id/slas", contractHandler.GetSLAs)
+		contractsRoutes.POST("/:id/slas", contractHandler.PostSLA)
 	}
 
 	// Customer routes

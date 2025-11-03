@@ -22,7 +22,7 @@ func NewContractHandler(service driver.ContractService) *ContractHandler {
 
 // GetContracts returns all contracts
 func (h *ContractHandler) GetContracts(c *gin.Context) {
-	contracts, err := h.service.RetrieveContracts()
+	contracts, err := h.service.RetrieveContracts(c)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -33,7 +33,7 @@ func (h *ContractHandler) GetContracts(c *gin.Context) {
 // GetContract returns a contract by id
 func (h *ContractHandler) GetContract(c *gin.Context) {
 	id := c.Param("id")
-	contract, err := h.service.RetrieveContract(id)
+	contract, err := h.service.RetrieveContract(c, id)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "contract not found"})
 		return
@@ -90,4 +90,34 @@ func (h *ContractHandler) DeleteContract(c *gin.Context) {
 		return
 	}
 	c.Status(http.StatusNoContent)
+}
+
+func (h *ContractHandler) GetSLAs(c *gin.Context) {
+	id := c.Param("id")
+
+	slas, err := h.service.RetrieveSLAs(c.Request.Context(), id)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, slas)
+}
+
+func (h *ContractHandler) PostSLA(c *gin.Context) {
+	id := c.Param("id")
+
+	var payload domain.SLA
+	if err := c.ShouldBindJSON(&payload); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	sla, err := h.service.CreateSLA(c.Request.Context(), id, payload)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusCreated, sla)
 }
