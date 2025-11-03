@@ -58,7 +58,20 @@ func (p *ContractEventProcessor) Process(ctx context.Context, event interface{})
 	//	return fmt.Errorf("failed to handle ContractAdded event: %d handler(s) failed", len(handlerErrors))
 	//}
 
-	//TODO: Send notification
+	// Send notification
+	message := map[string]interface{}{
+		"contractId": contractEvent.ContractID,
+		"customerId": contractEvent.CustomerID,
+		"eventType":  string(domain.EventTypeContractAdded),
+	}
+
+	if err := p.notifier.SendNotification(ctx, message, string(domain.EventTypeContractAdded)); err != nil {
+		p.logger.Error("Failed to send notification for ContractAdded event",
+			zap.Error(err),
+			zap.String("contractId", contractEvent.ContractID),
+		)
+		return err
+	}
 
 	p.logger.Info("Successfully processed ContractAdded event",
 		zap.String("contractId", contractEvent.ContractID),

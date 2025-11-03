@@ -68,7 +68,21 @@ func (p *SLAEventProcessor) processSLAAdded(ctx context.Context, event *domain.S
 	//	return fmt.Errorf("failed to handle SLAAdded event: %d handler(s) failed", len(handlerErrors))
 	//}
 
-	//TODO: Send notification
+	// Send notification
+	message := map[string]interface{}{
+		"contractId": event.ContractID,
+		"slaId":      event.SLAID,
+		"eventType":  string(domain.EventTypeSLAAdded),
+	}
+
+	if err := p.notifier.SendNotification(ctx, message, string(domain.EventTypeSLAAdded)); err != nil {
+		p.logger.Error("Failed to send notification for SLAAdded event",
+			zap.Error(err),
+			zap.String("contractId", event.ContractID),
+			zap.String("slaId", event.SLAID),
+		)
+		return err
+	}
 
 	p.logger.Info("Successfully processed SLAAdded event",
 		zap.String("contractId", event.ContractID),
@@ -118,7 +132,24 @@ func (p *SLAEventProcessor) processSLAStatusUpdated(ctx context.Context, event *
 	//	return fmt.Errorf("failed to handle SLAStatusUpdated event: %d handler(s) failed", len(handlerErrors))
 	//}
 
-	//TODO: Send notification
+	// Send notification
+	message := map[string]interface{}{
+		"contractId": event.ContractID,
+		"slaId":      event.SLAID,
+		"status":     event.NewStatus,
+		"statusName": status.String(),
+		"eventType":  string(domain.EventTypeSLAStatusUpdated),
+	}
+
+	if err := p.notifier.SendNotification(ctx, message, string(domain.EventTypeSLAStatusUpdated)); err != nil {
+		p.logger.Error("Failed to send notification for SLAStatusUpdated event",
+			zap.Error(err),
+			zap.String("contractId", event.ContractID),
+			zap.String("slaId", event.SLAID),
+			zap.String("status", status.String()),
+		)
+		return err
+	}
 
 	p.logger.Info("Successfully processed SLAStatusUpdated event",
 		zap.String("contractId", event.ContractID),
