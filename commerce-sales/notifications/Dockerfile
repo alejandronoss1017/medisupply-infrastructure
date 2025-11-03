@@ -73,9 +73,6 @@ RUN chmod 755 /app/listener
 # Switch to non-root user
 USER appuser
 
-# Set environment variables for Go runtime
-ENV GODEBUG=netdns=go
-
 # Health check (optional - adjust based on your service capabilities)
 # HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
 #     CMD ["/app/listener", "--health"] || exit 1
