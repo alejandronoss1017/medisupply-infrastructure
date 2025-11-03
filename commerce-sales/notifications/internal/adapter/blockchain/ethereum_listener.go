@@ -380,7 +380,7 @@ func (el *EthereumListener) handleContractAdded(ctx context.Context, vLog types.
 	}
 
 	// Extract indexed contractId from topics
-	contractID := string(vLog.Topics[1].Bytes())
+	contractID := vLog.Topics[1].Hex()
 
 	domainEvent := &domain.ContractAddedEvent{
 		BlockchainEvent: domain.BlockchainEvent{
@@ -406,7 +406,7 @@ func (el *EthereumListener) handleSLAAdded(ctx context.Context, vLog types.Log) 
 	}
 
 	// Extract indexed contractId from topics
-	contractID := string(vLog.Topics[1].Bytes())
+	contractID := vLog.Topics[1].Hex()
 
 	domainEvent := &domain.SLAAddedEvent{
 		BlockchainEvent: domain.BlockchainEvent{
@@ -432,8 +432,8 @@ func (el *EthereumListener) handleSLAStatusUpdated(ctx context.Context, vLog typ
 	}
 
 	// Extract indexed contractId and slaId from topics
-	contractID := string(vLog.Topics[1].Bytes())
-	slaID := string(vLog.Topics[2].Bytes())
+	contractID := vLog.Topics[1].Hex()
+	slaID := vLog.Topics[2].Hex()
 
 	domainEvent := &domain.SLAStatusUpdatedEvent{
 		BlockchainEvent: domain.BlockchainEvent{
