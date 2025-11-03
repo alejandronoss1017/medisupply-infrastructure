@@ -176,6 +176,73 @@
     "stateMutability": "view"
   },
   {
+    "name": "getAllContracts",
+    "type": "function",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "tuple[]",
+        "components": [
+          {
+            "name": "id",
+            "type": "string",
+            "internalType": "string"
+          },
+          {
+            "name": "path",
+            "type": "string",
+            "internalType": "string"
+          },
+          {
+            "name": "customerId",
+            "type": "string",
+            "internalType": "string"
+          },
+          {
+            "name": "slas",
+            "type": "tuple[]",
+            "components": [
+              {
+                "name": "id",
+                "type": "string",
+                "internalType": "string"
+              },
+              {
+                "name": "name",
+                "type": "string",
+                "internalType": "string"
+              },
+              {
+                "name": "description",
+                "type": "string",
+                "internalType": "string"
+              },
+              {
+                "name": "target",
+                "type": "uint256",
+                "internalType": "uint256"
+              },
+              {
+                "name": "comparator",
+                "type": "uint8",
+                "internalType": "enum SLAEnforcer.Comparator"
+              },
+              {
+                "name": "status",
+                "type": "uint8",
+                "internalType": "enum SLAEnforcer.SLAStatus"
+              }
+            ],
+            "internalType": "struct SLAEnforcer.SLA[]"
+          }
+        ],
+        "internalType": "struct SLAEnforcer.CustomerContract[]"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
     "name": "getContract",
     "type": "function",
     "inputs": [
