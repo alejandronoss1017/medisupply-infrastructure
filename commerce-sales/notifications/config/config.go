@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"os"
 	"strconv"
-
-	"github.com/joho/godotenv"
 )
 
 // Config holds all application configuration
@@ -28,9 +26,6 @@ type Config struct {
 
 // Load loads configuration from environment variables
 func Load() (*Config, error) {
-	// Try to load .env file, but don't fail if it doesn't exist
-	_ = godotenv.Load()
-
 	cfg := &Config{
 		BlockchainRPCURL:  getEnv("BLOCKCHAIN_RPC_URL", ""),
 		ContractAddress:   getEnv("CONTRACT_ADDRESS", ""),
