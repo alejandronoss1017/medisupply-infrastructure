@@ -14,20 +14,24 @@ import (
 
 // SLAService handles business logic for SLA management
 type SLAService struct {
-	repo   driven.Repository[string, domain.SLA]
-	logger *zap.SugaredLogger
-	idSeq  int64
+	blockchainWriter driven.BlockchainWriter
+	blockchainReader driven.BlockchainReader
+	repository       driven.Repository[string, domain.SLA]
+	logger           *zap.SugaredLogger
+	idSeq            int64
 }
 
 // Ensure SLAService implements the driver.SLAService interface
 var _ driver.SLAService = (*SLAService)(nil)
 
 // NewSLAService creates a new SLA service
-func NewSLAService(repo driven.Repository[string, domain.SLA]) *SLAService {
+func NewSLAService(repo driven.Repository[string, domain.SLA], writer driven.BlockchainWriter, reader driven.BlockchainReader) *SLAService {
 	return &SLAService{
-		repo:   repo,
-		logger: logger.New("SLA-SERVICE"),
-		idSeq:  time.Now().UnixNano(),
+		blockchainWriter: writer,
+		blockchainReader: reader,
+		repository:       repo,
+		logger:           logger.New("SLA-SERVICE"),
+		idSeq:            time.Now().UnixNano(),
 	}
 }
 
@@ -40,12 +44,12 @@ func (s *SLAService) CreateSLA(sla domain.SLA) (*domain.SLA, error) {
 	}
 
 	// Check if SLA already exists
-	if s.repo.Exists(sla.ID) {
+	if s.repository.Exists(sla.ID) {
 		return nil, fmt.Errorf("sla with id %s already exists", sla.ID)
 	}
 
 	// Save to repository
-	if err := s.repo.Create(sla); err != nil {
+	if err := s.repository.Create(sla); err != nil {
 		return nil, fmt.Errorf("failed to create sla: %w", err)
 	}
 
@@ -58,7 +62,7 @@ func (s *SLAService) CreateSLA(sla domain.SLA) (*domain.SLA, error) {
 
 // RetrieveSLA retrieves an SLA by ID
 func (s *SLAService) RetrieveSLA(id string) (*domain.SLA, error) {
-	sla, err := s.repo.FindByID(id)
+	sla, err := s.repository.FindByID(id)
 	if err != nil {
 		return nil, fmt.Errorf("sla not found: %w", err)
 	}
@@ -67,7 +71,7 @@ func (s *SLAService) RetrieveSLA(id string) (*domain.SLA, error) {
 
 // RetrieveSLAs retrieves all SLAs
 func (s *SLAService) RetrieveSLAs() ([]domain.SLA, error) {
-	slas, err := s.repo.FindAll()
+	slas, err := s.repository.FindAll()
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve slas: %w", err)
 	}
@@ -77,12 +81,12 @@ func (s *SLAService) RetrieveSLAs() ([]domain.SLA, error) {
 // UpdateSLA updates an existing SLA
 func (s *SLAService) UpdateSLA(sla domain.SLA) (*domain.SLA, error) {
 	// Verify SLA exists
-	if !s.repo.Exists(sla.ID) {
+	if !s.repository.Exists(sla.ID) {
 		return nil, fmt.Errorf("sla with id %s not found", sla.ID)
 	}
 
 	// Update in repository
-	if err := s.repo.Update(sla); err != nil {
+	if err := s.repository.Update(sla); err != nil {
 		return nil, fmt.Errorf("failed to update sla: %w", err)
 	}
 
@@ -95,12 +99,12 @@ func (s *SLAService) UpdateSLA(sla domain.SLA) (*domain.SLA, error) {
 // DeleteSLA removes an SLA
 func (s *SLAService) DeleteSLA(id string) error {
 	// Verify SLA exists
-	if !s.repo.Exists(id) {
+	if !s.repository.Exists(id) {
 		return fmt.Errorf("sla with id %s not found", id)
 	}
 
 	// Delete from repository
-	if err := s.repo.Delete(id); err != nil {
+	if err := s.repository.Delete(id); err != nil {
 		return fmt.Errorf("failed to delete sla: %w", err)
 	}
 
