@@ -11,6 +11,9 @@ type BlockchainReader interface {
 	// GetContract retrieves a contract by ID with all its SLAs
 	GetContract(ctx context.Context, contractID string) (*domain.Contract, error)
 
+	// GetContracts retrieves all contracts stored in the blockchain
+	GetContracts(ctx context.Context) ([]*domain.Contract, error)
+
 	// GetContractCount returns the total number of contracts
 	GetContractCount(ctx context.Context) (*big.Int, error)
 

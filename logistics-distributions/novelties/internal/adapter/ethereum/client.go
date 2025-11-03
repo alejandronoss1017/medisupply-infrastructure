@@ -84,7 +84,7 @@ func NewSmartContractClient(rcpURL, address, key, path string) (*SmartContractCl
 
 // CallContractMethod calls a constant (read-only) method on the configured contract
 // and decodes the return values into out. This does not send a transaction and costs no gas.
-// Supported bindings:
+// Supported binding:
 // - Single return value: pass a pointer to the Go type (e.g. *uint64, *bool, *string, *common.Address)
 // - Multiple return values: pass a pointer to a struct with fields in order or tagged with `abi:"<index or name>"`
 // - Dynamic catch-all: pass a pointer to []interface{} to receive all values

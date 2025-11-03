@@ -11,16 +11,22 @@ type ContractService interface {
 	CreateContract(ctx context.Context, contract domain.Contract) (*domain.Contract, error)
 
 	// RetrieveContract retrieves a contract by ID
-	RetrieveContract(id string) (*domain.Contract, error)
+	RetrieveContract(ctx context.Context, id string) (*domain.Contract, error)
 
 	// RetrieveContracts retrieves all contracts
-	RetrieveContracts() ([]domain.Contract, error)
+	RetrieveContracts(ctx context.Context) ([]*domain.Contract, error)
 
 	// UpdateContract updates an existing contract
 	UpdateContract(contract domain.Contract) (*domain.Contract, error)
 
 	// DeleteContract removes a contract
 	DeleteContract(id string) error
+
+	// CreateSLA append an SLA to a specific contract
+	CreateSLA(ctx context.Context, id string, sla domain.SLA) (*domain.SLA, error)
+
+	// RetrieveSLAs retrieves all SLAs related to a specific contract
+	RetrieveSLAs(ctx context.Context, id string) ([]domain.SLA, error)
 }
 
 // SLAService defines the interface for SLA business logic
