@@ -1,0 +1,46 @@
+# Ignore Git-related files
+.git
+.gitignore
+.gitattributes
+
+# Ignore Go build artifacts and cache
+*.o
+*.a
+*.so
+*.exe
+*.dll
+*.dylib
+*.test
+*.out
+vendor/
+bin/
+.cache/
+
+# Ignore editor/IDE specific files
+.vscode/
+.idea/
+*.swp
+*.bak
+*.swo
+.DS_Store
+*~
+
+# Ignore temporary files and logs
+tmp/
+log/
+*.log
+temp/
+*.tmp
+
+# Ignore test files and related directories if not needed in the final image
+*_test.go
+testdata/
+
+# Documentation
+*.md
+docs/
+
+
+
+
+
