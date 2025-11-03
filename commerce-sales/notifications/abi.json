@@ -1,0 +1,380 @@
+[
+  {
+    "name": "ContractAdded",
+    "type": "event",
+    "inputs": [
+      {
+        "name": "contractId",
+        "type": "string",
+        "indexed": true,
+        "internalType": "string"
+      },
+      {
+        "name": "customerId",
+        "type": "string",
+        "indexed": false,
+        "internalType": "string"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "name": "SLAAdded",
+    "type": "event",
+    "inputs": [
+      {
+        "name": "contractId",
+        "type": "string",
+        "indexed": true,
+        "internalType": "string"
+      },
+      {
+        "name": "slaId",
+        "type": "string",
+        "indexed": false,
+        "internalType": "string"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "name": "SLAStatusUpdated",
+    "type": "event",
+    "inputs": [
+      {
+        "name": "contractId",
+        "type": "string",
+        "indexed": true,
+        "internalType": "string"
+      },
+      {
+        "name": "slaId",
+        "type": "string",
+        "indexed": true,
+        "internalType": "string"
+      },
+      {
+        "name": "newStatus",
+        "type": "uint8",
+        "indexed": false,
+        "internalType": "enum SLAEnforcer.SLAStatus"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "name": "addContract",
+    "type": "function",
+    "inputs": [
+      {
+        "name": "_id",
+        "type": "string",
+        "internalType": "string"
+      },
+      {
+        "name": "_path",
+        "type": "string",
+        "internalType": "string"
+      },
+      {
+        "name": "_customerId",
+        "type": "string",
+        "internalType": "string"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "name": "addSLA",
+    "type": "function",
+    "inputs": [
+      {
+        "name": "_contractId",
+        "type": "string",
+        "internalType": "string"
+      },
+      {
+        "name": "_slaId",
+        "type": "string",
+        "internalType": "string"
+      },
+      {
+        "name": "_name",
+        "type": "string",
+        "internalType": "string"
+      },
+      {
+        "name": "_description",
+        "type": "string",
+        "internalType": "string"
+      },
+      {
+        "name": "_target",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "_comparator",
+        "type": "uint8",
+        "internalType": "enum SLAEnforcer.Comparator"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "name": "checkSLA",
+    "type": "function",
+    "inputs": [
+      {
+        "name": "_contractId",
+        "type": "string",
+        "internalType": "string"
+      },
+      {
+        "name": "_slaIndex",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "_actualValue",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "name": "contracts",
+    "type": "function",
+    "inputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "id",
+        "type": "string",
+        "internalType": "string"
+      },
+      {
+        "name": "path",
+        "type": "string",
+        "internalType": "string"
+      },
+      {
+        "name": "customerId",
+        "type": "string",
+        "internalType": "string"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "name": "getContract",
+    "type": "function",
+    "inputs": [
+      {
+        "name": "_id",
+        "type": "string",
+        "internalType": "string"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "id",
+        "type": "string",
+        "internalType": "string"
+      },
+      {
+        "name": "path",
+        "type": "string",
+        "internalType": "string"
+      },
+      {
+        "name": "customerId",
+        "type": "string",
+        "internalType": "string"
+      },
+      {
+        "name": "slas",
+        "type": "tuple[]",
+        "components": [
+          {
+            "name": "id",
+            "type": "string",
+            "internalType": "string"
+          },
+          {
+            "name": "name",
+            "type": "string",
+            "internalType": "string"
+          },
+          {
+            "name": "description",
+            "type": "string",
+            "internalType": "string"
+          },
+          {
+            "name": "target",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "comparator",
+            "type": "uint8",
+            "internalType": "enum SLAEnforcer.Comparator"
+          },
+          {
+            "name": "status",
+            "type": "uint8",
+            "internalType": "enum SLAEnforcer.SLAStatus"
+          }
+        ],
+        "internalType": "struct SLAEnforcer.SLA[]"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "name": "getContractCount",
+    "type": "function",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "name": "getSLA",
+    "type": "function",
+    "inputs": [
+      {
+        "name": "_contractId",
+        "type": "string",
+        "internalType": "string"
+      },
+      {
+        "name": "_slaIndex",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "id",
+        "type": "string",
+        "internalType": "string"
+      },
+      {
+        "name": "name",
+        "type": "string",
+        "internalType": "string"
+      },
+      {
+        "name": "description",
+        "type": "string",
+        "internalType": "string"
+      },
+      {
+        "name": "target",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "comparator",
+        "type": "uint8",
+        "internalType": "enum SLAEnforcer.Comparator"
+      },
+      {
+        "name": "status",
+        "type": "uint8",
+        "internalType": "enum SLAEnforcer.SLAStatus"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "name": "getSLAs",
+    "type": "function",
+    "inputs": [
+      {
+        "name": "_contractId",
+        "type": "string",
+        "internalType": "string"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "tuple[]",
+        "components": [
+          {
+            "name": "id",
+            "type": "string",
+            "internalType": "string"
+          },
+          {
+            "name": "name",
+            "type": "string",
+            "internalType": "string"
+          },
+          {
+            "name": "description",
+            "type": "string",
+            "internalType": "string"
+          },
+          {
+            "name": "target",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "comparator",
+            "type": "uint8",
+            "internalType": "enum SLAEnforcer.Comparator"
+          },
+          {
+            "name": "status",
+            "type": "uint8",
+            "internalType": "enum SLAEnforcer.SLAStatus"
+          }
+        ],
+        "internalType": "struct SLAEnforcer.SLA[]"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "name": "setSLAStatus",
+    "type": "function",
+    "inputs": [
+      {
+        "name": "_contractId",
+        "type": "string",
+        "internalType": "string"
+      },
+      {
+        "name": "_slaIndex",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "_status",
+        "type": "uint8",
+        "internalType": "enum SLAEnforcer.SLAStatus"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  }
+]
