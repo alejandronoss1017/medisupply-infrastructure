@@ -17,6 +17,7 @@ import (
 type ContractService struct {
 	repository       driven.Repository[string, domain.Contract]
 	blockchainWriter driven.BlockchainWriter
+	blockchainReader driven.BlockchainReader
 	logger           *zap.SugaredLogger
 	idSeq            int64
 }
@@ -25,10 +26,11 @@ type ContractService struct {
 var _ driver.ContractService = (*ContractService)(nil)
 
 // NewContractService creates a new contract service
-func NewContractService(repository driven.Repository[string, domain.Contract], blockchainWriter driven.BlockchainWriter) *ContractService {
+func NewContractService(repository driven.Repository[string, domain.Contract], writer driven.BlockchainWriter, reader driven.BlockchainReader) *ContractService {
 	return &ContractService{
 		repository:       repository,
-		blockchainWriter: blockchainWriter,
+		blockchainWriter: writer,
+		blockchainReader: reader,
 		logger:           logger.New("CONTRACT-SERVICE"),
 		idSeq:            time.Now().UnixNano(),
 	}
@@ -83,20 +85,24 @@ func (s *ContractService) CreateContract(ctx context.Context, contract domain.Co
 }
 
 // RetrieveContract retrieves a contract by ID
-func (s *ContractService) RetrieveContract(id string) (*domain.Contract, error) {
-	contract, err := s.repository.FindByID(id)
+func (s *ContractService) RetrieveContract(ctx context.Context, id string) (*domain.Contract, error) {
+
+	contract, err := s.blockchainReader.GetContract(ctx, id)
 	if err != nil {
 		return nil, fmt.Errorf("contract not found: %w", err)
 	}
+
 	return contract, nil
 }
 
 // RetrieveContracts retrieves all contracts
-func (s *ContractService) RetrieveContracts() ([]domain.Contract, error) {
-	contracts, err := s.repository.FindAll()
+func (s *ContractService) RetrieveContracts(ctx context.Context) ([]*domain.Contract, error) {
+
+	contracts, err := s.blockchainReader.GetContracts(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve contracts: %w", err)
 	}
+
 	return contracts, nil
 }
 
@@ -134,4 +140,71 @@ func (s *ContractService) DeleteContract(id string) error {
 		"contract_id", id,
 	)
 	return nil
+}
+
+func (s *ContractService) CreateSLA(ctx context.Context, id string, sla domain.SLA) (*domain.SLA, error) {
+	// Validate inputs
+	if id == "" {
+		return nil, fmt.Errorf("contract id cannot be empty")
+	}
+	if sla.Name == "" {
+		return nil, fmt.Errorf("sla name cannot be empty")
+	}
+	if sla.Target == nil {
+		return nil, fmt.Errorf("sla target cannot be nil")
+	}
+
+	// Generate SLA ID if empty
+	if sla.ID == "" {
+		s.idSeq++
+		sla.ID = strconv.FormatInt(s.idSeq, 10)
+	}
+
+	s.logger.Infow("Appending SLA to contract on blockchain",
+		"contract_id", id,
+		"sla_id", sla.ID,
+		"name", sla.Name,
+	)
+
+	receipt, err := s.blockchainWriter.AddSLA(ctx, id, sla.ID, sla.Name, sla.Description, sla.Target, uint8(sla.Comparator))
+	if err != nil {
+		return nil, fmt.Errorf("failed to add SLA to blockchain: %w", err)
+	}
+	if receipt.Status != 1 {
+		return nil, fmt.Errorf("blockchain transaction failed (status: %d, tx: %s)", receipt.Status, receipt.TxHash)
+	}
+
+	s.logger.Infow("SLA successfully appended to contract on blockchain",
+		"contract_id", id,
+		"sla_id", sla.ID,
+		"tx_hash", receipt.TxHash,
+		"block_number", receipt.BlockNumber,
+		"gas_used", receipt.GasUsed,
+	)
+
+	return &sla, nil
+}
+
+func (s *ContractService) RetrieveSLAs(ctx context.Context, id string) ([]domain.SLA, error) {
+	// Validate input
+	if id == "" {
+		return nil, fmt.Errorf("contract id cannot be empty")
+	}
+
+	// Read SLAs from the blockchain
+	slaPtrs, err := s.blockchainReader.GetSLAs(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("failed to retrieve slas: %w", err)
+	}
+
+	// Convert []*domain.SLA to []domain.SLA
+	slas := make([]domain.SLA, len(slaPtrs))
+	for i, p := range slaPtrs {
+		if p == nil {
+			continue
+		}
+		slas[i] = *p
+	}
+
+	return slas, nil
 }
