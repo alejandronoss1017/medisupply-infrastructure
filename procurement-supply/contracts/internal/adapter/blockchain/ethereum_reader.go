@@ -230,6 +230,45 @@ func (er *EthereumReader) GetChainID(ctx context.Context) (*big.Int, error) {
 	return chainID, nil
 }
 
+func (er *EthereumReader) GetContracts(ctx context.Context) ([]*domain.Contract, error) {
+	er.logger.Debugw("Getting contracts from blockchain")
+
+	result, err := er.contract.GetAllContracts(&bind.CallOpts{Context: ctx})
+	if err != nil {
+		return nil, fmt.Errorf("failed to get contracts: %w", err)
+	}
+
+	contracts := make([]*domain.Contract, len(result))
+
+	for i, contract := range result {
+		// Convert SLAs from a binding type to a domain type
+		slas := make([]*domain.SLA, len(contract.Slas))
+		for j, sla := range contract.Slas {
+			slas[j] = &domain.SLA{
+				ID:          sla.Id,
+				Name:        sla.Name,
+				Description: sla.Description,
+				Target:      sla.Target,
+				Comparator:  domain.Comparator(sla.Comparator),
+				Status:      domain.SLAStatus(sla.Status),
+			}
+		}
+
+		contracts[i] = &domain.Contract{
+			ID:         contract.Id,
+			Path:       contract.Path,
+			CustomerID: contract.CustomerId,
+			SLAs:       slas,
+		}
+	}
+
+	er.logger.Debugw("Contracts retrieved from blockchain",
+		"contracts", contracts,
+	)
+
+	return contracts, nil
+}
+
 // cleanString removes null bytes and trims whitespace from strings
 func cleanString(s string) string {
 	return strings.TrimRight(strings.TrimSpace(s), "\x00")
