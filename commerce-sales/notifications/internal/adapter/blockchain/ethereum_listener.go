@@ -245,8 +245,6 @@ func (el *EthereumListener) subscribeWebSocket(ctx context.Context) error {
 		query.FromBlock = big.NewInt(int64(el.startBlock))
 	}
 
-	el.logger.Info("Subscribing to contract events via WebSocket")
-
 	logs := make(chan types.Log)
 	sub, err := el.client.SubscribeFilterLogs(ctx, query, logs)
 	if err != nil {
