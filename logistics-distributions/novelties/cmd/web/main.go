@@ -2,10 +2,10 @@ package main
 
 import (
 	"context"
-	"log"
 	"math/big"
-	"novelties/internal/adapter/ethereum"
+	"novelties/internal/adapter/blockchain"
 	"novelties/internal/adapter/http"
+	"novelties/pkg/logger"
 	"os"
 
 	"github.com/gin-gonic/gin"
@@ -13,41 +13,36 @@ import (
 
 func main() {
 
-	rcpURL := os.Getenv("RCP_URL")
-	smartContractAddress := os.Getenv("SMART_CONTRACT_ADDRESS")
+	// Initialize logger
+	log := logger.New("WEB-API")
+	defer func() {
+		// Flush logger on exit
+		_ = log.Sync()
+	}()
+
+	log.Info("Starting Contracts Web API Service...")
+
+	rcpURL := os.Getenv("BLOCKCHAIN_RPC_URL")
+	contractAddress := os.Getenv("CONTRACT_ADDRESS")
 	privateKey := os.Getenv("PRIVATE_KEY")
-	abiPath := os.Getenv("ABI_PATH")
 
-	client, err := ethereum.NewSmartContractClient(rcpURL, smartContractAddress, privateKey, abiPath)
+	blockchainWriter, err := blockchain.NewEthereumWriter(rcpURL, contractAddress, privateKey, log)
 	if err != nil {
-		log.Fatalf("failed to create Ethereum client: %v", err)
+		log.Fatalw("Failed to create blockchain writer",
+			"error", err,
+		)
 	}
+	defer blockchainWriter.Close()
 
-	ctx := context.Background()
-
-	var value any
-
-	log.Println(value)
-
-	observed := big.NewInt(12345)
-	slaId := big.NewInt(0)
-	note := "Test note"
-
-	tx, err := client.SendContractTransaction(ctx, "reportMetric", nil, slaId, observed, note)
-	if err != nil {
-		log.Fatalf("failed to report metric: %v", err)
-	}
-
-	_, err = client.WaitTransaction(ctx, tx)
-	if err != nil {
-		log.Fatalf("failed to wait for tx: %v", err)
-	}
+	handler := http.NewNoveltyHandler(blockchainWriter, log)
 
 	// Setup router
 	router := gin.Default()
 
 	// Health check
 	router.GET("/ping", http.PongHandler)
+
+	router.POST("/novelties", handler.PostNovelty)
 
 	if err := router.Run(); err != nil {
 		log.Fatalf("failed to start server: %v", err)
