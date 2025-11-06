@@ -1,8 +1,6 @@
 package main
 
 import (
-	"context"
-	"math/big"
 	"novelties/internal/adapter/blockchain"
 	"novelties/internal/adapter/http"
 	"novelties/pkg/logger"
