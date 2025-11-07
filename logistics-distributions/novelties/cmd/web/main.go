@@ -40,7 +40,7 @@ func main() {
 	// Health check
 	router.GET("/ping", http.PongHandler)
 
-	router.POST("/novelties", handler.PostNovelty)
+	router.POST("/", handler.PostNovelty)
 
 	if err := router.Run(); err != nil {
 		log.Fatalf("failed to start server: %v", err)
