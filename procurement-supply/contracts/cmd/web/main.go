@@ -76,16 +76,13 @@ func main() {
 	router.GET("/ping", http.PongHandler)
 
 	// Contract routes
-	contractsRoutes := router.Group("/contracts")
-	{
-		contractsRoutes.GET("", contractHandler.GetContracts)
-		contractsRoutes.GET("/:id", contractHandler.GetContract)
-		contractsRoutes.POST("", contractHandler.PostContract)
-		contractsRoutes.PUT("/:id", contractHandler.PutContract)
-		contractsRoutes.DELETE("/:id", contractHandler.DeleteContract)
-		contractsRoutes.GET("/:id/slas", contractHandler.GetSLAs)
-		contractsRoutes.POST("/:id/slas", contractHandler.PostSLA)
-	}
+	router.GET("", contractHandler.GetContracts)
+	router.GET("/:id", contractHandler.GetContract)
+	router.POST("", contractHandler.PostContract)
+	router.PUT("/:id", contractHandler.PutContract)
+	router.DELETE("/:id", contractHandler.DeleteContract)
+	router.GET("/:id/slas", contractHandler.GetSLAs)
+	router.POST("/:id/slas", contractHandler.PostSLA)
 
 	// Customer routes
 	customersRoutes := router.Group("/customers")
