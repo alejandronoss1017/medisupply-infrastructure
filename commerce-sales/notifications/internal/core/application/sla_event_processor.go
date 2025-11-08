@@ -107,11 +107,31 @@ func (p *SLAEventProcessor) processSLAStatusUpdated(ctx context.Context, event *
 
 	// Add any SLA status-specific business logic here,
 	// For example, trigger alerts for violations, update metrics, etc.
-	if status == domain.SLAStatusViolated {
+	if status == domain.VIOLATED {
 		p.logger.Warn("⚠️ SLA VIOLATION DETECTED",
 			zap.String("contractId", event.ContractID),
 			zap.String("slaId", event.SLAID),
 		)
+
+		message := map[string]interface{}{
+			"contractId": event.ContractID,
+			"slaId":      event.SLAID,
+			"status":     event.NewStatus,
+			"statusName": status.String(),
+			"eventType":  string(domain.SLAViolated),
+		}
+
+		if err := p.notifier.SendNotification(ctx, message, string(domain.SLAViolated)); err != nil {
+			p.logger.Error("Failed to send notification for SLAStatusUpdated event",
+				zap.Error(err),
+				zap.String("contractId", event.ContractID),
+				zap.String("slaId", event.SLAID),
+				zap.String("status", status.String()),
+			)
+			return err
+		}
+
+		return nil
 	}
 
 	// Notify all registered handlers

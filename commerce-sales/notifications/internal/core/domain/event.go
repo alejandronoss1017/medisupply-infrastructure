@@ -20,6 +20,7 @@ const (
 	EventTypeContractAdded    EventType = "ContractAdded"
 	EventTypeSLAAdded         EventType = "SLAAdded"
 	EventTypeSLAStatusUpdated EventType = "SLAStatusUpdated"
+	SLAViolated               EventType = "SLAViolated"
 )
 
 // ContractAddedEvent represents the ContractAdded event from the blockchain
@@ -48,20 +49,23 @@ type SLAStatusUpdatedEvent struct {
 type SLAStatus uint8
 
 const (
-	SLAStatusPending  SLAStatus = 0
-	SLAStatusMet      SLAStatus = 1
-	SLAStatusViolated SLAStatus = 2
+	ACTIVE    SLAStatus = 0
+	VIOLATED  SLAStatus = 1
+	COMPLIANT SLAStatus = 2
+	INACTIVE  SLAStatus = 3
 )
 
 // String returns the string representation of SLAStatus
 func (s SLAStatus) String() string {
 	switch s {
-	case SLAStatusPending:
-		return "Pending"
-	case SLAStatusMet:
-		return "Met"
-	case SLAStatusViolated:
+	case ACTIVE:
+		return "Active"
+	case VIOLATED:
 		return "Violated"
+	case COMPLIANT:
+		return "Compliant"
+	case INACTIVE:
+		return "Inactive"
 	default:
 		return "Unknown"
 	}
@@ -71,23 +75,28 @@ func (s SLAStatus) String() string {
 type Comparator uint8
 
 const (
-	ComparatorLessThan    Comparator = 0
-	ComparatorGreaterThan Comparator = 1
-	ComparatorEqualTo     Comparator = 2
+	GREATER_THAN     Comparator = 0
+	LESS_THAN        Comparator = 1
+	EQUAL            Comparator = 2
+	GREATER_OR_EQUAL Comparator = 3
+	LESS_OR_EQUAL    Comparator = 4
 )
 
 // String returns the string representation of Comparator
 func (c Comparator) String() string {
 	switch c {
-	case ComparatorLessThan:
-		return "LessThan"
-	case ComparatorGreaterThan:
+	case GREATER_THAN:
 		return "GreaterThan"
-	case ComparatorEqualTo:
-		return "EqualTo"
-	default:
-		return "Unknown"
+	case LESS_THAN:
+		return "LessThan"
+	case EQUAL:
+		return "Equal"
+	case GREATER_OR_EQUAL:
+		return "GreaterOrEqual"
+	case LESS_OR_EQUAL:
+		return "LessOrEqualThan"
 	}
+	return "Unknown"
 }
 
 // SLA represents a Service Level Agreement
